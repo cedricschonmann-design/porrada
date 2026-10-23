@@ -736,7 +736,7 @@ button.av:active { transform: scale(.92); }
 .opt[aria-pressed="true"] .mark svg { opacity: 1; transform: none; }
 .opt .em { font-size: 22px; width: 28px; text-align: center; flex: none; }
 .opt .d { display: block; font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 2px; }
-.q-foot { position: sticky; bottom: 0; padding: 14px 0 calc(var(--safe-bottom) + 12px); margin-top: 10px; background: linear-gradient(transparent, var(--bg) 40%); }
+.q-foot { position: sticky; bottom: 0; padding: 14px 0 calc(var(--safe-bottom) + 12px); margin-top: 10px; }
 
 /* ---------- Stratégie ---------- */
 .style-card { padding: 22px 20px; }
