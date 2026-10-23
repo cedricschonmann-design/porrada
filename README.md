@@ -59,7 +59,7 @@ app/                      ← l'appli publiée (aucune étape de compilation)
       submissions.js      ← répertoire des soumissions (Kimono / Grappling / les deux)
       referees.js         ← règles des fédérations (vérifiées en octobre 2026)
       refbrain.js         ← les arbitres personnages et leurs réponses précises
-design/icon.svg           ← dessin de l'icône (ceinture nouée)
+design/icon.svg           ← dessin de l'icône (étoile blanche sur fond noir)
 tests/                    ← tests automatiques
 .github/workflows/deploy.yml  ← publication sur GitHub Pages à chaque mise à jour
 ```

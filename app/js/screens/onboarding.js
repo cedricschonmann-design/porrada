@@ -4,11 +4,10 @@ import { state, save, createMe, importData } from '../store.js';
 import { h, fill, ICON, seg, toast, sfx, haptic, belt, BELTS, confetti } from '../ui.js';
 import { avatarOf, pickPhoto } from '../people.js';
 
-export const LOGO = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><g transform="translate(0 6)" fill="#fff">
-<path class="fillin" fill-rule="evenodd" d="M512 232c-172 0-302 78-302 176s130 176 302 176 302-78 302-176-130-176-302-176zm0 64c-118 0-206 40-206 90s88 90 206 90 206-40 206-90-88-90-206-90z"/>
-<g stroke="#000" stroke-width="26" stroke-linejoin="round" class="fillin"><g transform="translate(486 598) rotate(42)"><rect x="-60" y="0" width="120" height="300"/><rect x="-60" y="176" width="120" height="86" fill="#000" stroke="none"/><rect x="-60" y="192" width="120" height="12" stroke="none"/><rect x="-60" y="214" width="120" height="12" stroke="none"/><rect x="-60" y="236" width="120" height="12" stroke="none"/></g><g transform="translate(538 598) rotate(-42)"><rect x="-60" y="0" width="120" height="296"/></g><path d="M420 500 Q512 474 604 500 L618 646 Q512 676 406 646 Z"/></g>
-<path class="fillin" d="M422 612 Q520 562 610 524" fill="none" stroke="#000" stroke-width="22" stroke-linecap="round"/>
-<path class="draw" pathLength="1" d="M512 232c-172 0-302 78-302 176s130 176 302 176 302-78 302-176-130-176-302-176z" fill="none" stroke="#fff" stroke-width="18"/>
+export const LOGO = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="56" stroke-linejoin="miter" stroke-miterlimit="4">
+<path class="draw" pathLength="1" d="M512 202 L780.5 667 L243.5 667 Z"/>
+<path class="draw d2" pathLength="1" d="M512 822 L243.5 357 L780.5 357 Z"/>
+<g class="fillin"><path d="M512 202 L780.5 667 L243.5 667 Z"/><path d="M512 822 L243.5 357 L780.5 357 Z"/></g>
 </g></svg>`;
 
 const USER_RE = /^[a-z0-9._]{3,20}$/;
