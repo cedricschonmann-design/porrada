@@ -1,7 +1,7 @@
 // Inscription : bienvenue, compte, toi, ta pratique, ta photo, c'est parti.
 
-import { state, save, createMe, importData } from '../store.js';
-import { h, fill, ICON, seg, toast, sfx, haptic, belt, BELTS, confetti } from '../ui.js';
+import { state, save, createMe, importData, importTransfer, isIOS, isStandalone } from '../store.js';
+import { h, fill, ICON, seg, toast, sfx, haptic, belt, BELTS, confetti, sheet } from '../ui.js';
 import { avatarOf, pickPhoto } from '../people.js';
 
 export const LOGO = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="56" stroke-linejoin="miter" stroke-miterlimit="4">
@@ -28,6 +28,7 @@ export function startOnboarding(onDone) {
     photo: (prev && prev.photo) || null,
   };
   let step = prev ? 1 : 0;
+  let inSafari = false;
   let dir = 1;
   const STEPS = 6;
   const root = document.getElementById('app');
@@ -55,7 +56,27 @@ export function startOnboarding(onDone) {
     const foot = h('div', { class: 'stack', style: { marginTop: '18px' } });
     fill(el, top, body, foot);
 
-    if (step === 0) {
+    if (step === 0 && isIOS && !isStandalone && !inSafari) {
+      // Dans Safari : on installe d'abord, sinon le compte resterait dans Safari.
+      const stepRow = (n, ic, t, sub) => h('div', { class: 'rowc', style: { textAlign: 'left' } },
+        h('span', { class: 'tipic', style: { fontWeight: '900' } }, ic ? h('span', { html: ICON[ic], style: { display: 'contents' } }) : n),
+        h('div', { class: 'grow' }, h('div', { class: 't' }, t), sub ? h('div', { class: 's' }, sub) : null));
+      body.append(
+        h('div', { style: { display: 'grid', justifyItems: 'center', gap: '16px', textAlign: 'center' } },
+          logoMark(84),
+          h('h1', null, 'Installe PORRADA'),
+          h('p', { class: 'muted', style: { maxWidth: '320px' } }, 'Crée ton compte dans l’appli installée : il y restera, même si tu fermes Safari.'),
+        ),
+        h('div', { class: 'stack', style: { marginTop: '6px' } },
+          stepRow(1, 'share', 'Touche Partager', 'Le carré avec une flèche, en bas de Safari'),
+          stepRow(2, 'plus', '« Sur l’écran d’accueil »', 'Puis Ajouter'),
+          stepRow(3, 'star', 'Ouvre PORRADA depuis l’icône', 'Et crée ton compte'),
+        ),
+      );
+      foot.append(
+        h('button', { class: 'btn ghost block', onclick: () => { inSafari = true; draw(); } }, 'Continuer dans Safari quand même'),
+      );
+    } else if (step === 0) {
       body.append(
         h('div', { style: { display: 'grid', justifyItems: 'center', gap: '22px', textAlign: 'center' } },
           h('div', { class: 'logo-mark', html: LOGO }),
@@ -65,7 +86,7 @@ export function startOnboarding(onDone) {
       );
       foot.append(
         h('button', { class: 'btn primary lg block', id: 'onb-start', onclick: () => go(1) }, 'Créer mon compte'),
-        h('button', { class: 'btn ghost block', onclick: restore }, 'J’ai une sauvegarde'),
+        h('button', { class: 'btn ghost block', id: 'onb-restore', onclick: restore }, 'J’ai déjà un compte'),
       );
       setTimeout(() => sfx('levelup'), 600);
     }
@@ -199,20 +220,39 @@ export function startOnboarding(onDone) {
   }
 
   function restore() {
-    const input = h('input', { type: 'file', accept: 'application/json,.json' });
-    input.onchange = async () => {
-      const f = input.files[0];
-      if (!f) return;
+    const ta = h('textarea', { class: 'input', id: 'transfer-code', placeholder: 'PRDT1.…', 'aria-label': 'Code de transfert' });
+    const doImport = async (text) => {
       try {
-        importData(await f.text());
-        toast('Sauvegarde importée.', { ok: true, sound: 'success' });
+        await importTransfer(text);
+        toast('Compte récupéré.', { ok: true, sound: 'success' });
         setTimeout(() => location.reload(), 700);
-      } catch (e) {
-        sfx('error');
-        toast(e.message || 'Fichier illisible.');
-      }
+      } catch (e) { sfx('error'); toast(e.message || 'Code illisible.'); }
     };
-    input.click();
+    sheet((close) => h('div', { class: 'stack' },
+      h('h2', null, 'Récupérer mon compte'),
+      h('p', { class: 'muted' }, 'Dans Safari (ou sur ton ancien téléphone), va dans Réglages › Transférer mon compte, puis colle le code ici.'),
+      h('button', {
+        class: 'btn primary lg block', onclick: async () => {
+          let text = '';
+          try { text = await navigator.clipboard.readText(); } catch (e) { text = ''; }
+          if (/PRDT[01]\./.test(text)) { close(); doImport(text); } else { ta.focus(); toast('Colle le code dans la case.'); }
+        },
+      }, h('span', { html: ICON.paste, style: { display: 'contents' } }), 'Coller mon code'),
+      ta,
+      h('button', { class: 'btn block', onclick: () => { if (ta.value.trim()) { close(); doImport(ta.value); } } }, 'Valider le code'),
+      h('div', { class: 'sep-or' }, 'ou'),
+      h('button', {
+        class: 'btn ghost block', onclick: () => {
+          const input = h('input', { type: 'file', accept: 'application/json,.json' });
+          input.onchange = async () => {
+            const f = input.files[0];
+            if (!f) return;
+            try { importData(await f.text()); close(); toast('Sauvegarde importée.', { ok: true, sound: 'success' }); setTimeout(() => location.reload(), 700); } catch (e) { sfx('error'); toast(e.message || 'Fichier illisible.'); }
+          };
+          input.click();
+        },
+      }, 'Importer un fichier de sauvegarde'),
+    ));
   }
 
   draw();

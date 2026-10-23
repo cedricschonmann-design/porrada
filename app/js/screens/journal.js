@@ -7,7 +7,6 @@ import { header } from '../app.js';
 import { subPicker } from './combat.js';
 import { avatarOf } from '../people.js';
 
-const FEELS = ['😵', '😮‍💨', '🙂', '😀', '🔥'];
 const FEEL_LABEL = ['Épuisé', 'Dur', 'Correct', 'Bien', 'Au top'];
 let courseView = null;
 let period = 'weeks';
@@ -213,7 +212,7 @@ function sessionList(sessions) {
         h('div', { class: 't' }, `${s.mode === 'nogi' ? 'No-Gi' : 'Gi'} · ${s.minutes >= 60 ? Math.floor(s.minutes / 60) + ' h ' + String(s.minutes % 60).padStart(2, '0') : s.minutes + ' min'}`),
         h('div', { class: 's' }, `${plural((s.given || []).length, 'placée', 'placées')} · ${plural((s.received || []).length, 'subie', 'subies')}${s.note ? ' · ' + s.note.slice(0, 30) : ''}`),
       ),
-      s.feel != null ? h('span', { style: { fontSize: '22px' }, 'aria-label': FEEL_LABEL[s.feel] }, FEELS[s.feel]) : null,
+      s.feel != null ? h('span', { class: 'tag' + (s.feel >= 3 ? ' ok' : '') }, FEEL_LABEL[s.feel]) : null,
       h('span', { class: 'chev', html: ICON.chev }),
     ))),
   )));
@@ -241,6 +240,132 @@ function startCourse() {
 
 export function resume() { if (state.course) openCourse(); }
 
+// ---------- Ressenti (5 niveaux, en mots) ----------
+function feelPicker(value, onPick) {
+  const el = h('div', { class: 'feel' });
+  const draw = () => fill(el, ...FEEL_LABEL.map((l, i) => h('button', { 'aria-pressed': String(value === i), 'data-silent': '', onclick: () => { value = value === i ? null : i; draw(); haptic('light'); onPick(value); } }, l)));
+  draw();
+  return el;
+}
+
+// ---------- Compteurs de soumissions (+ / −), sans devoir chercher à chaque fois ----------
+// entries : tableau de { sub, at } (sub null = « sans préciser »). Un + sur une soumission
+// transforme d'abord une soumission « sans préciser » en celle-ci, sinon en ajoute une.
+function favoriteSubs(k, mode) {
+  const count = {};
+  for (const s of state.journal) for (const x of s[k] || []) if (x.sub) count[x.sub] = (count[x.sub] || 0) + 1;
+  const base = mode === 'nogi' ? ['rnc', 'guillotine', 'triangle', 'armbar', 'kimura', 'darce', 'heel-in', 'ankle'] : ['rnc', 'triangle', 'armbar', 'cross-collar', 'kimura', 'bow-arrow', 'guillotine', 'omoplata'];
+  return [...new Set([...Object.entries(count).sort((a, b) => b[1] - a[1]).map(([id]) => id), ...base])]
+    .filter((id) => SUB_BY_ID[id] && !(mode === 'nogi' && SUB_BY_ID[id].kind === 'kimono') && !(mode === 'gi' && SUB_BY_ID[id].kind === 'grappling'));
+}
+
+function subCounter(entries, mode, k, onChange) {
+  const el = h('div', { class: 'counter' });
+  const extra = new Set();
+  const draw = () => {
+    const nulls = entries.filter((x) => !x.sub).length;
+    const counts = {};
+    for (const x of entries) if (x.sub) counts[x.sub] = (counts[x.sub] || 0) + 1;
+    const shown = [...new Set([...Object.keys(counts), ...extra, ...favoriteSubs(k, mode).slice(0, 5)])];
+    const inc = (id) => {
+      const i = entries.findIndex((x) => !x.sub);
+      if (id && i >= 0) entries[i].sub = id; else entries.push({ sub: id, at: Date.now() });
+      sfx('pop'); haptic('light'); draw(); onChange();
+    };
+    const dec = (id) => {
+      for (let i = entries.length - 1; i >= 0; i--) if ((entries[i].sub || null) === id) { entries.splice(i, 1); break; }
+      haptic('light'); draw(); onChange();
+    };
+    const row = (id, label, n, cls = '') => h('div', { class: 'crow' + (n ? ' on' : '') + cls, 'data-sub': id || 'none' },
+      h('span', { class: 'cname' }, label),
+      h('button', { class: 'iconbtn cbtn', 'aria-label': `Moins ${label}`, html: ICON.minus, disabled: !n, onclick: () => dec(id) }),
+      h('span', { class: 'cval num' }, n),
+      h('button', { class: 'iconbtn cbtn', 'aria-label': `Plus ${label}`, html: ICON.plus, onclick: () => inc(id) }));
+    fill(el,
+      row(null, 'Sans préciser', nulls, ' muted-row'),
+      shown.map((id) => row(id, subName(id), counts[id] || 0)),
+      h('button', {
+        class: 'btn sm block', style: { marginTop: '4px' }, onclick: () => sheet((closeS) => h('div', { class: 'stack' },
+          h('h2', null, 'Autre soumission'),
+          subPicker(mode, (id) => { extra.add(id); closeS(); inc(id); }, null, { title: null }),
+        )),
+      }, h('span', { html: ICON.search, style: { display: 'contents' } }), 'Autre soumission'),
+    );
+  };
+  draw();
+  return el;
+}
+
+// ---------- Note rapide sur l'écran verrouillé ----------
+// Une appli web ne peut pas avoir de widget : on utilise les commandes « musique » de l'écran
+// verrouillé (précédent / suivant) pendant le cours, grâce à un son silencieux qui tourne en boucle.
+const lockNotes = {
+  audio: null, url: null, active: false, onHit: null,
+  supported() { return 'mediaSession' in navigator && typeof Audio !== 'undefined'; },
+  silent() {
+    if (this.url) return this.url;
+    const rate = 8000; const n = rate * 8;
+    const buf = new ArrayBuffer(44 + n); const v = new DataView(buf);
+    const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+    new Uint8Array(buf, 44).fill(128);
+    this.url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+    return this.url;
+  },
+  async start(onHit) {
+    if (!this.supported()) return false;
+    this.onHit = onHit;
+    try {
+      if (!this.audio) { this.audio = new Audio(this.silent()); this.audio.loop = true; this.audio.setAttribute('playsinline', ''); }
+      await this.audio.play();
+      const ms = navigator.mediaSession;
+      ms.setActionHandler('nexttrack', () => this.onHit && this.onHit('given'));
+      ms.setActionHandler('previoustrack', () => this.onHit && this.onHit('received'));
+      try { ms.setActionHandler('seekforward', null); ms.setActionHandler('seekbackward', null); } catch (e) { /* pas grave */ }
+      ms.setActionHandler('play', () => this.audio && this.audio.play());
+      ms.setActionHandler('pause', () => { if (this.audio) this.audio.play(); });
+      this.active = true;
+      this.update();
+      return true;
+    } catch (e) {
+      this.active = false;
+      return false;
+    }
+  },
+  update() {
+    if (!this.active || !state.course) return;
+    const c = state.course;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${c.given.length} placée${c.given.length > 1 ? 's' : ''} · ${c.received.length} subie${c.received.length > 1 ? 's' : ''}`,
+        artist: 'Suivant : j’ai soumis · Précédent : j’ai été soumis',
+        album: `PORRADA · cours ${c.mode === 'nogi' ? 'No-Gi' : 'Gi'}`,
+        artwork: [{ src: 'icons/star-512.png', sizes: '512x512', type: 'image/png' }],
+      });
+      navigator.mediaSession.playbackState = 'playing';
+    } catch (e) { /* pas grave */ }
+  },
+  stop() {
+    this.active = false;
+    try { if (this.audio) this.audio.pause(); } catch (e) { /* rien */ }
+    try {
+      const ms = navigator.mediaSession;
+      ['nexttrack', 'previoustrack', 'play', 'pause'].forEach((a) => ms.setActionHandler(a, null));
+      ms.metadata = null;
+    } catch (e) { /* rien */ }
+  },
+};
+
+function addHit(k, { silent = false } = {}) {
+  const c = state.course;
+  if (!c) return;
+  c[k].push({ sub: null, at: Date.now() });
+  save();
+  lockNotes.update();
+  if (!silent) { sfx(k === 'given' ? 'give' : 'take'); haptic('medium'); }
+}
+
 function openCourse() {
   if (courseView) return;
   keepAwake(true);
@@ -250,6 +375,7 @@ function openCourse() {
     const wrap = h('div', { id: 'course' });
     const elapsed = h('span', { class: 'num' }, '0:00');
     const timerBox = h('div');
+    const lockBox = h('div');
     let lastPhase = null;
     const draw = () => {
       if (!c()) return;
@@ -261,47 +387,49 @@ function openCourse() {
           h('button', { class: 'hit give', id: 'hit-give', 'aria-label': `J’ai soumis, ${c().given.length}`, onclick: () => hit('given') }, h('span', { html: ICON.fist, style: { display: 'contents' } }), h('span', { class: 'n' }, c().given.length), 'J’ai soumis'),
           h('button', { class: 'hit take', id: 'hit-take', 'aria-label': `J’ai été soumis, ${c().received.length}`, onclick: () => hit('received') }, h('span', { html: ICON.flag, style: { display: 'contents' } }), h('span', { class: 'n' }, c().received.length), 'J’ai été soumis'),
         ),
+        h('p', { class: 'small muted center', style: { margin: '10px 4px 0' } }, 'Un appui = une soumission. Tu préciseras lesquelles à la fin du cours.'),
+        h('div', { style: { marginTop: '12px' } }, lockBox),
         h('div', { style: { marginTop: '12px' } }, timerBox),
         h('div', { style: { marginTop: '12px' } }, lastLine()),
         h('button', { class: 'btn lg block', id: 'end-course', style: { marginTop: '16px' }, onclick: endCourse }, h('span', { html: ICON.stop, style: { display: 'contents' } }), 'Terminer le cours'),
       );
       drawTimer();
+      drawLock();
     };
     const lastLine = () => {
       const all = [...c().given.map((x) => ({ ...x, k: 'given' })), ...c().received.map((x) => ({ ...x, k: 'received' }))].sort((a, b) => b.at - a.at);
-      if (!all.length) return h('p', { class: 'small muted center' }, 'Touche un bouton après chaque soumission. Tu choisis laquelle, ou tu passes.');
+      if (!all.length) return null;
       const l = all[0];
       return h('div', { class: 'card', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '12px 14px' } },
-        h('div', null, h('div', { class: 'small muted' }, `Dernière, à ${hm(l.at)}`), h('b', null, `${l.k === 'given' ? 'Placée' : 'Subie'} : ${l.sub ? subName(l.sub) : 'sans précision'}`)),
+        h('div', null, h('div', { class: 'small muted' }, `Dernière, à ${hm(l.at)}`), h('b', null, l.k === 'given' ? 'Soumission placée' : 'Soumission subie')),
         h('button', {
           class: 'btn sm', onclick: () => {
             const arr = c()[l.k];
             const i = arr.findIndex((x) => x.at === l.at);
             if (i >= 0) arr.splice(i, 1);
-            save(); draw(); sfx('del');
+            save(); lockNotes.update(); draw(); sfx('del');
           },
         }, 'Annuler'),
       );
     };
     const hit = (k) => {
-      const mode = c().mode;
-      sfx(k === 'given' ? 'give' : 'take');
-      haptic('medium');
-      sheet((closeS) => {
-        const recent = Object.entries([...state.journal.flatMap((s) => s[k] || []), ...c()[k]].reduce((m, x) => { if (x.sub) m[x.sub] = (m[x.sub] || 0) + 1; return m; }, {}))
-          .sort((a, b) => b[1] - a[1]).map(([id]) => id).filter((id) => SUB_BY_ID[id] && !(mode === 'nogi' && SUB_BY_ID[id].kind === 'kimono')).slice(0, 5);
-        const add = (sub) => {
-          c()[k].push({ sub: sub || null, at: Date.now() });
-          save(); closeS(); draw();
-          const n = document.querySelector(k === 'given' ? '#hit-give .n' : '#hit-take .n');
-          if (n) n.classList.add('bump');
-          sfx('pop');
-        };
-        return h('div', { class: 'stack' },
-          h('div', { class: 'sheet-head' }, h('h2', null, k === 'given' ? 'Tu as soumis avec…' : 'Tu as été soumis par…'), h('button', { class: 'btn sm', id: 'skip-sub', onclick: () => add(null) }, 'Passer')),
-          subPicker(mode, (id) => add(id), null, { title: null, recent }),
-        );
-      });
+      addHit(k);
+      draw();
+      const n = document.querySelector(k === 'given' ? '#hit-give .n' : '#hit-take .n');
+      if (n) n.classList.add('bump');
+    };
+    const drawLock = () => {
+      if (!lockNotes.supported()) { fill(lockBox); return; }
+      fill(lockBox, h('div', { class: 'card', id: 'lock-card', style: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px' } },
+        h('span', { class: 'iconbtn', style: { background: lockNotes.active ? 'var(--green)' : 'var(--glass-3)', color: lockNotes.active ? '#000' : 'inherit', border: '0' }, html: ICON.lock }),
+        h('div', { style: { flex: '1 1 0', minWidth: '0', textAlign: 'left' } },
+          h('b', null, lockNotes.active ? 'Note rapide activée' : 'Note rapide écran verrouillé'),
+          h('div', { class: 'small muted', style: { marginTop: '2px' } }, lockNotes.active ? 'Bouton suivant : j’ai soumis. Précédent : j’ai été soumis.' : 'Note sans déverrouiller, avec les boutons musique.'),
+        ),
+        lockNotes.active
+          ? h('button', { class: 'btn sm', onclick: () => { lockNotes.stop(); drawLock(); } }, 'Couper')
+          : h('button', { class: 'btn sm', id: 'lock-on', onclick: async () => { const ok = await lockNotes.start((k) => { addHit(k, { silent: true }); draw(); }); if (!ok) toast('Impossible ici : utilise les gros boutons.'); drawLock(); } }, 'Activer'),
+      ));
     };
     // Minuteur de rounds avec repos, en boucle
     const drawTimer = () => {
@@ -341,7 +469,7 @@ function openCourse() {
       if (!card) return;
       if (phase !== lastPhase) {
         if (lastPhase) {
-          if (isRest) { sfx('buzzer'); haptic('heavy'); toast('Fin du round : note tes soumissions.'); } else { sfx('bell'); haptic('heavy'); }
+          if (isRest) { sfx('buzzer'); haptic('heavy'); } else { sfx('bell'); haptic('heavy'); }
         }
         lastPhase = phase;
       }
@@ -350,50 +478,7 @@ function openCourse() {
       lab.textContent = isRest ? `Repos · prochain round ${n + 1}` : `Round ${n} · ${tm.work} min`;
       val.textContent = mmss(left);
     };
-    const endCourse = () => {
-      const cc = c();
-      let feel = null;
-      let note = '';
-      const partners = new Set();
-      sheet((closeS) => {
-        const feelEl = h('div', { class: 'feel' });
-        const drawFeel = () => fill(feelEl, ...FEELS.map((e, i) => h('button', { 'aria-pressed': String(feel === i), 'aria-label': FEEL_LABEL[i], 'data-silent': '', onclick: () => { feel = i; drawFeel(); sfx('toggle'); haptic('light'); } }, e)));
-        drawFeel();
-        const friends = Object.values(state.friends);
-        const pEl = h('div', { class: 'chips' });
-        const drawP = () => fill(pEl, ...friends.map((f) => h('button', { class: 'chip', 'aria-pressed': String(partners.has(f.id)), onclick: () => { partners.has(f.id) ? partners.delete(f.id) : partners.add(f.id); drawP(); } }, avatarOf(f, { size: 22 }), f.name)));
-        drawP();
-        const ta = h('textarea', { class: 'input', placeholder: 'Une technique, un détail, ce qui a marché…', oninput: (e) => { note = e.target.value; } });
-        return h('div', { class: 'stack' },
-          h('h2', null, 'Fin du cours'),
-          h('p', { class: 'muted' }, `${hhmmss(Date.now() - cc.start)} sur le tapis · ${plural(cc.given.length, 'placée', 'placées')} · ${plural(cc.received.length, 'subie', 'subies')}`),
-          h('div', { class: 'field' }, h('span', null, 'Ton ressenti'), feelEl),
-          friends.length ? h('div', { class: 'field' }, h('span', null, 'Avec qui tu as roulé'), pEl) : null,
-          h('div', { class: 'field' }, h('span', null, 'Ce que tu retiens'), ta),
-          h('button', {
-            class: 'btn primary lg block', id: 'save-course', onclick: () => {
-              const minutes = Math.max(1, Math.round((Date.now() - cc.start) / 60000));
-              state.journal.push({ id: cc.id, start: cc.start, minutes, mode: cc.mode, given: cc.given, received: cc.received, note: note.trim(), feel, partners: [...partners] });
-              state.course = null;
-              save();
-              closeS();
-              page.close({ silent: true });
-              sfx('success'); haptic('medium');
-              const goal = state.settings.weeklyGoal || 3;
-              const wk = thisWeekCount();
-              toast(wk === goal ? `Objectif de la semaine atteint : ${wk}/${goal} !` : 'Séance enregistrée dans ton journal.', { ok: true, ms: 3200 });
-            },
-          }, 'Enregistrer la séance'),
-          h('button', {
-            class: 'btn ghost block', onclick: async () => {
-              closeS();
-              if (!(await ask('Abandonner ce cours ?', 'Il ne sera pas enregistré dans ton journal.', 'Abandonner', { danger: true }))) return;
-              state.course = null; save(); page.close();
-            },
-          }, 'Ne pas enregistrer'),
-        );
-      });
-    };
+    const endCourse = () => openEnd(page);
     draw();
     tickFn();
     timer = setInterval(tickFn, 250);
@@ -402,6 +487,54 @@ function openCourse() {
     title: 'Cours', back: 'Réduire',
     onClose: () => { clearInterval(timer); courseView = null; keepAwake(false); },
   });
+}
+
+// Fin du cours : on précise les soumissions avec des + / −, le ressenti, les partenaires.
+function openEnd(coursePage) {
+  const cc = state.course;
+  if (!cc) return;
+  let feel = null;
+  let note = '';
+  const partners = new Set();
+  push((page) => {
+    const head = h('p', { class: 'page-sub' });
+    const refreshHead = () => { head.textContent = `${hhmmss(Date.now() - cc.start)} sur le tapis · ${plural(cc.given.length, 'placée', 'placées')} · ${plural(cc.received.length, 'subie', 'subies')}`; };
+    refreshHead();
+    const friends = Object.values(state.friends);
+    const pEl = h('div', { class: 'chips' });
+    const drawP = () => fill(pEl, ...friends.map((f) => h('button', { class: 'chip', 'aria-pressed': String(partners.has(f.id)), onclick: () => { partners.has(f.id) ? partners.delete(f.id) : partners.add(f.id); drawP(); } }, avatarOf(f, { size: 22 }), f.name)));
+    drawP();
+    return h('div', { class: 'stack' },
+      h('h1', { class: 'page-title', style: { marginBottom: '0' } }, 'Fin du cours'),
+      head,
+      h('div', { class: 'card stack', id: 'end-given' }, h('h3', null, 'Tes soumissions placées'), subCounter(cc.given, cc.mode, 'given', () => { save(); refreshHead(); })),
+      h('div', { class: 'card stack', id: 'end-received' }, h('h3', null, 'Les soumissions subies'), subCounter(cc.received, cc.mode, 'received', () => { save(); refreshHead(); })),
+      h('div', { class: 'field' }, h('span', null, 'Ton ressenti'), feelPicker(feel, (v) => { feel = v; })),
+      friends.length ? h('div', { class: 'field' }, h('span', null, 'Avec qui tu as roulé'), pEl) : null,
+      h('label', { class: 'field' }, h('span', null, 'Ce que tu retiens'), h('textarea', { class: 'input', placeholder: 'Une technique, un détail, ce qui a marché…', oninput: (e) => { note = e.target.value; } })),
+      h('button', {
+        class: 'btn primary lg block', id: 'save-course', onclick: () => {
+          const minutes = Math.max(1, Math.round((Date.now() - cc.start) / 60000));
+          state.journal.push({ id: cc.id, start: cc.start, minutes, mode: cc.mode, given: cc.given, received: cc.received, note: note.trim(), feel, partners: [...partners] });
+          state.course = null;
+          lockNotes.stop();
+          save();
+          page.close({ silent: true });
+          coursePage.close({ silent: true });
+          sfx('success'); haptic('medium');
+          const goal = state.settings.weeklyGoal || 3;
+          const wk = thisWeekCount();
+          toast(wk === goal ? `Objectif de la semaine atteint : ${wk}/${goal}` : 'Séance enregistrée dans ton journal.', { ok: true, ms: 3200 });
+        },
+      }, 'Enregistrer la séance'),
+      h('button', {
+        class: 'btn ghost block', onclick: async () => {
+          if (!(await ask('Abandonner ce cours ?', 'Il ne sera pas enregistré dans ton journal.', 'Abandonner', { danger: true }))) return;
+          state.course = null; lockNotes.stop(); save(); page.close({ silent: true }); coursePage.close();
+        },
+      }, 'Ne pas enregistrer'),
+    );
+  }, { title: 'Fin du cours', back: 'Cours' });
 }
 
 // ---------- Ajouter / modifier une séance ----------
@@ -427,7 +560,7 @@ function editSession(id) {
         h('div', { class: 'field' }, h('span', null, 'Tenue'), seg([['gi', 'Gi'], ['nogi', 'No-Gi']], s.mode, (v) => { s.mode = v; })),
         subsBlock('Soumissions placées', 'given'),
         subsBlock('Soumissions subies', 'received'),
-        h('div', { class: 'field' }, h('span', null, 'Ressenti'), h('div', { class: 'feel' }, FEELS.map((e, i) => h('button', { 'aria-pressed': String(s.feel === i), 'aria-label': FEEL_LABEL[i], 'data-silent': '', onclick: () => { s.feel = s.feel === i ? null : i; sfx('toggle'); draw(); } }, e)))),
+        h('div', { class: 'field' }, h('span', null, 'Ressenti'), feelPicker(s.feel, (v) => { s.feel = v; })),
         Object.keys(state.friends).length ? h('div', { class: 'field' }, h('span', null, 'Avec qui tu as roulé'), h('div', { class: 'chips' }, Object.values(state.friends).map((f) => h('button', { class: 'chip', 'aria-pressed': String(s.partners.includes(f.id)), onclick: () => { s.partners = s.partners.includes(f.id) ? s.partners.filter((x) => x !== f.id) : [...s.partners, f.id]; draw(); } }, avatarOf(f, { size: 22 }), f.name)))) : null,
         h('label', { class: 'field' }, h('span', null, 'Ce que tu retiens'), h('textarea', { class: 'input', placeholder: 'Une technique, un détail, ce qui a marché…', oninput: (e) => { s.note = e.target.value; } }, s.note || '')),
         h('button', {
@@ -447,18 +580,7 @@ function editSession(id) {
         }, 'Supprimer la séance') : null,
       );
     };
-    const subsBlock = (label, k) => h('div', { class: 'field' },
-      h('span', null, `${label} (${s[k].length})`),
-      h('div', { class: 'chips' },
-        s[k].map((x, i) => h('button', { class: 'chip', 'aria-label': `Retirer ${x.sub ? subName(x.sub) : 'sans précision'}`, onclick: () => { s[k].splice(i, 1); sfx('del'); draw(); } }, x.sub ? subName(x.sub) : 'Sans précision', h('span', { html: ICON.close, style: { display: 'contents' } }))),
-        h('button', {
-          class: 'chip', 'aria-pressed': 'true', onclick: () => sheet((closeS) => h('div', { class: 'stack' },
-            h('div', { class: 'sheet-head' }, h('h2', null, label), h('button', { class: 'btn sm', onclick: () => { s[k].push({ sub: null, at: s.start }); closeS(); draw(); } }, 'Sans préciser')),
-            subPicker(s.mode, (sid) => { s[k].push({ sub: sid, at: s.start }); closeS(); draw(); sfx('pop'); }, null, { title: null }),
-          )),
-        }, h('span', { html: ICON.plus, style: { display: 'contents' } }), 'Ajouter'),
-      ),
-    );
+    const subsBlock = (label, k) => h('div', { class: 'card stack' }, h('h3', null, label), subCounter(s[k], s.mode, k, () => {}));
     draw();
     return wrap;
   }, { title: existing ? 'Séance' : 'Nouvelle séance' });

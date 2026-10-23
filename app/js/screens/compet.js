@@ -1,4 +1,4 @@
-// Compét. : un arbitre par fédération, un vrai personnage à qui on pose ses questions.
+// Compétition : mon palmarès, et un arbitre par fédération à qui on pose ses questions.
 
 import { state, save, profile } from '../store.js';
 import { h, fill, ICON, push, seg, belt, BELT_NAME, AGE_NAME, sfx, haptic } from '../ui.js';
@@ -7,6 +7,7 @@ import { CHARS, reply, topicReply } from '../data/refbrain.js';
 import { refBadge } from '../people.js';
 import { header } from '../app.js';
 import { openSettings } from './settings.js';
+import { palmaresCard } from './palmares.js';
 
 const badge = (r, size) => refBadge(CHARS[r.id].name, CHARS[r.id].grad, size);
 
@@ -16,29 +17,30 @@ export function render() {
   const fav = state.settings.fed;
   const refs = [...REFEREES].sort((a, b) => (b.id === fav) - (a.id === fav));
   return h('div', null,
-    header('Compét.'),
-    h('p', { class: 'sub-title' }, 'Pose tes questions aux arbitres, comme au bord du tapis.'),
-    h('button', { class: 'rowc', style: { marginBottom: '14px' }, onclick: openSettings, 'aria-label': 'Modifier mon profil de compétiteur' },
+    header('Compétition'),
+    palmaresCard(),
+    h('div', { class: 'section-head section' }, h('h3', null, 'Mon profil de compétiteur')),
+    h('button', { class: 'rowc', onclick: openSettings, 'aria-label': 'Modifier mon profil de compétiteur' },
       belt(me.belt, me.stripes),
       h('div', { class: 'grow' },
         h('div', { class: 't', style: { fontSize: '15px' } }, `Ceinture ${BELT_NAME[me.belt].toLowerCase()} · ${AGE_NAME[p.age].split(' (')[0]}`),
-        h('div', { class: 's' }, `${p.sex === 'f' ? 'Femmes' : 'Hommes'}${p.weight ? ' · ' + String(p.weight).replace('.', ',') + ' kg' : ' · ajoute ton poids pour ta catégorie'}`),
+        h('div', { class: 's' }, `${p.sex === 'f' ? 'Femmes' : 'Hommes'}${p.weight ? ' · ' + String(p.weight).replace('.', ',') + ' kg' : ' · ajoute ton poids'}`),
       ),
       h('span', { class: 'chev', html: ICON.chev }),
     ),
-    h('div', { class: 'refs' }, refs.map((r, i) => {
+    h('div', { class: 'section-head section' }, h('h3', null, 'Les arbitres'), h('span', { class: 'small muted' }, 'Pose-leur tes questions')),
+    h('div', { class: 'rows' }, refs.map((r) => {
       const c = CHARS[r.id];
-      const wide = i === refs.length - 1 && refs.length % 2 === 1;
-      return h('button', { class: 'refcard' + (wide ? ' wide' : ''), 'data-ref': r.id, onclick: () => openReferee(r) },
-        badge(r, wide ? 64 : 72),
-        h('div', { style: wide ? null : { display: 'contents' } },
-          h('span', { class: 'fed' }, r.short),
-          h('div', { class: 'nm' }, c.name),
-          h('div', { class: 'ds' }, c.line),
+      return h('button', { class: 'rowc refrow', 'data-ref': r.id, onclick: () => openReferee(r) },
+        badge(r, 50),
+        h('div', { class: 'grow' },
+          h('div', { class: 'hstack', style: { gap: '8px' } }, h('span', { class: 't' }, c.name), h('span', { class: 'fedtag' }, r.short)),
+          h('div', { class: 's ellipsis' }, c.line),
         ),
+        h('span', { class: 'chev', html: ICON.chev }),
       );
     })),
-    h('p', { class: 'disclaimer', style: { marginTop: '18px' } }, `Personnages fictifs. Règles vérifiées en ${VERIFIED} sur les règlements officiels : le règlement de chaque événement fait toujours foi.`),
+    h('p', { class: 'disclaimer', style: { marginTop: '16px' } }, `Personnages fictifs. Règles vérifiées en ${VERIFIED} sur les règlements officiels : le règlement de chaque événement fait toujours foi.`),
   );
 }
 
@@ -55,7 +57,7 @@ function openReferee(r) {
 
     const bubble = (res) => h('div', { class: 'bubble rich' },
       h('h3', null,
-        res.verdict === true ? h('span', { class: 'verdict yes', 'aria-label': 'Oui' }, '✓') : res.verdict === false ? h('span', { class: 'verdict no', 'aria-label': 'Non' }, '✕') : null,
+        res.verdict === true ? h('span', { class: 'verdict yes', 'aria-label': 'Oui', html: ICON.check }) : res.verdict === false ? h('span', { class: 'verdict no', 'aria-label': 'Non', html: ICON.close }) : null,
         res.title),
       res.table ? h('table', null, h('tbody', null, res.table.map(([k, v]) => h('tr', null, h('td', null, k), h('td', null, v))))) : null,
       res.list && res.list.length ? h('div', null, h('div', { class: 'sub-h' }, 'Interdit'), h('ul', null, res.list.map((x) => h('li', null, x)))) : null,

@@ -23,15 +23,16 @@ const FILES = [
   'js/screens/settings.js',
   'js/screens/onboarding.js',
   'js/screens/chat.js',
+  'js/screens/palmares.js',
   'js/people.js',
   'js/data/refbrain.js',
   'js/data/questionnaire.js',
   'js/data/submissions.js',
   'js/data/referees.js',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/icon-maskable-512.png',
-  'icons/apple-touch-icon.png',
+  'icons/star-192.png',
+  'icons/star-512.png',
+  'icons/star-maskable-512.png',
+  'icons/star-touch-180.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -50,22 +51,27 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Réseau d'abord (pour avoir toujours la dernière version), et la copie enregistrée si pas de réseau.
+function fromNetwork(req, timeout) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('lent')), timeout);
+    fetch(req, { cache: 'no-cache' }).then((res) => { clearTimeout(t); resolve(res); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (req.mode === 'navigate') {
-    event.respondWith(caches.match('index.html').then((r) => r || fetch(req)));
-    return;
-  }
+  const nav = req.mode === 'navigate';
   event.respondWith(
-    caches.match(req, { ignoreSearch: true }).then((cached) => cached || fetch(req).then((res) => {
+    fromNetwork(req, nav ? 3500 : 5000).then((res) => {
       if (res.ok) {
         const copy = res.clone();
-        caches.open(VERSION).then((c) => c.put(req, copy));
+        caches.open(VERSION).then((c) => c.put(nav ? 'index.html' : req, copy));
       }
       return res;
-    })),
+    }).catch(() => caches.match(nav ? 'index.html' : req, { ignoreSearch: true }).then((r) => r || caches.match(req, { ignoreSearch: true })).then((r) => r || Response.error())),
   );
 });

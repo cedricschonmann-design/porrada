@@ -161,7 +161,6 @@ export function openBoard(fid, qrCode = null) {
   let phase = null;
   let lastNum = null;
   let warned = {};
-  let step = { s: 'winner' };
   let correcting = false;
   const oppId = other(fight);
   const opp = person(oppId);
@@ -285,35 +284,51 @@ export function openBoard(fid, qrCode = null) {
     },
   }, 'Annuler');
 
-  const back = (to) => h('button', { class: 'btn ghost block', onclick: () => { step = to; draw(); } }, h('span', { html: ICON.back, style: { display: 'contents' } }), 'Retour');
-
-  // Saisie du résultat
-  const drawResult = () => {
-    if (step.s === 'winner') {
-      fill(center, h('div', { class: 'pick' },
-        h('h2', { style: { marginBottom: '6px' } }, 'Qui a gagné ?'),
-        h('button', { class: 'who-btn me', onclick: () => { step = { s: 'how', winner: state.me.id }; draw(); } }, avatarOf(state.me, { size: 44 }), state.me.name),
-        h('button', { class: 'who-btn', onclick: () => { step = { s: 'how', winner: oppId }; draw(); } }, avatarOf(opp, { size: 44 }), oppName),
-        h('button', { class: 'btn block', style: { height: '56px' }, onclick: () => { step = { s: 'confirm', winner: null, method: 'draw' }; draw(); } }, 'Match nul'),
-      ));
-    } else if (step.s === 'how') {
-      fill(center, h('div', { class: 'pick' },
-        h('h2', { style: { marginBottom: '6px' } }, `${step.winner === state.me.id ? 'Tu as' : oppName + ' a'} gagné comment ?`),
-        h('button', { class: 'who-btn me', onclick: () => { step = { ...step, s: 'confirm', method: 'points' }; draw(); } }, h('span', { html: ICON.chart, style: { display: 'contents' } }), 'Aux points'),
-        h('button', { class: 'who-btn me', onclick: () => { step = { ...step, s: 'sub', method: 'submission' }; draw(); } }, h('span', { html: ICON.fist, style: { display: 'contents' } }), 'Par soumission'),
-        back({ s: 'winner' }),
-      ));
-    } else if (step.s === 'sub') {
-      fill(center, subPicker(fight.mode, (id) => { step = { ...step, s: 'confirm', sub: id }; draw(); }, () => { step = { ...step, s: 'how' }; draw(); }));
-    } else if (step.s === 'confirm') {
-      const preview = { result: { winner: step.winner, method: step.method, sub: step.sub } };
-      fill(center, h('div', { class: 'pick', style: { textAlign: 'center' } },
-        h('h2', null, 'Résultat'),
-        h('p', { class: 'label', style: { margin: '6px 0 14px' } }, sentence(preview, oppName)),
-        h('button', { class: 'btn primary lg block', id: 'validate', onclick: () => validate() }, h('span', { html: ICON.check, style: { display: 'contents' } }), 'Valider le résultat'),
-        back({ s: 'winner' }),
-      ));
+  // Saisie du résultat : les soumissions de chacun (3–1…), puis les points s'il y a égalité.
+  const tally = { me: [], opp: [] };
+  let pointsWinner = 'draw';
+  const loadTally = () => {
+    const r = fight.result;
+    tally.me = [...(r && r.tally && r.tally[state.me.id]) || (r && r.method === 'submission' && r.winner === state.me.id ? [r.sub] : [])];
+    tally.opp = [...(r && r.tally && r.tally[oppId]) || (r && r.method === 'submission' && r.winner === oppId ? [r.sub] : [])];
+    pointsWinner = r && r.method === 'points' ? (r.winner === state.me.id ? 'me' : 'opp') : 'draw';
+  };
+  const addSub = (side) => {
+    sheet((closeS) => h('div', { class: 'stack' },
+      h('div', { class: 'sheet-head' }, h('h2', null, side === 'me' ? 'Ta soumission' : `Soumission de ${oppName}`),
+        h('button', { class: 'btn sm', id: 'sub-skip', onclick: () => { tally[side].push(null); closeS(); sfx('pop'); drawResult(); } }, 'Sans préciser')),
+      subPicker(fight.mode, (id) => { tally[side].push(id); closeS(); sfx(side === 'me' ? 'give' : 'take'); haptic('light'); drawResult(); }, null, { title: null }),
+    ));
+  };
+  const resultFromTally = () => {
+    const a = tally.me.length; const b = tally.opp.length;
+    if (a !== b) {
+      const winner = a > b ? state.me.id : oppId;
+      const list = a > b ? tally.me : tally.opp;
+      return { winner, method: 'submission', sub: list.find(Boolean) || null };
     }
+    if (pointsWinner === 'draw') return { winner: null, method: 'draw', sub: null };
+    return { winner: pointsWinner === 'me' ? state.me.id : oppId, method: 'points', sub: null };
+  };
+  const drawResult = () => {
+    const side = (who, person, list) => h('div', { class: 'tally-side' + (who === 'me' ? ' me' : '') },
+      avatarOf(person, { size: 48 }),
+      h('div', { class: 'tname' }, who === 'me' ? 'Toi' : oppName),
+      h('div', { class: 'tcount num', id: who === 'me' ? 'tally-me' : 'tally-opp' }, list.length),
+      h('div', { class: 'tsubs' }, list.map((x, i) => h('button', { class: 'chip', 'aria-label': `Retirer ${x ? subName(x) : 'cette soumission'}`, onclick: () => { list.splice(i, 1); sfx('del'); drawResult(); } }, x ? subName(x) : 'Soumission', h('span', { html: ICON.close, style: { display: 'contents' } })))),
+      h('button', { class: 'btn sm block', 'data-add': who, onclick: () => addSub(who) }, h('span', { html: ICON.plus, style: { display: 'contents' } }), 'Soumission'),
+    );
+    const even = tally.me.length === tally.opp.length;
+    const preview = { a: fight.a, b: fight.b, result: { ...resultFromTally(), tally: { [state.me.id]: tally.me, [oppId]: tally.opp } } };
+    fill(center, h('div', { class: 'pick', style: { maxWidth: '480px' } },
+      h('h2', { style: { textAlign: 'center' } }, 'Résultat du round'),
+      h('p', { class: 'muted small', style: { textAlign: 'center', marginTop: '-4px' } }, 'Ajoute chaque soumission, pour toi et pour lui.'),
+      h('div', { class: 'tally' }, side('me', state.me, tally.me), side('opp', opp, tally.opp)),
+      even ? h('div', { class: 'field' }, h('span', { class: 'label', style: { textAlign: 'center', paddingLeft: '0' } }, tally.me.length ? 'Égalité de soumissions : qui a mené aux points ?' : 'Pas de soumission : qui a gagné aux points ?'),
+        seg([['me', 'Toi'], ['draw', 'Égalité'], ['opp', oppName]], pointsWinner, (v) => { pointsWinner = v; drawResult(); })) : null,
+      h('p', { class: 'label', style: { textAlign: 'center', margin: '4px 0 0' } }, sentence(preview, oppName)),
+    ));
+    fill(bottom, h('button', { class: 'btn primary lg block', id: 'validate', onclick: () => validate() }, h('span', { html: ICON.check, style: { display: 'contents' } }), 'Valider le résultat'));
   };
 
   let shareCode = null;
@@ -321,7 +336,7 @@ export function openBoard(fid, qrCode = null) {
   let celebrated = false;
   const validate = async () => {
     const prev = fight.result;
-    fight.result = { winner: step.winner, method: step.method, sub: step.sub || null, by: state.me.id, at: Date.now(), v: prev ? (prev.v || 1) + 1 : 1 };
+    fight.result = { ...resultFromTally(), tally: { [state.me.id]: [...tally.me], [oppId]: [...tally.opp] }, by: state.me.id, at: Date.now(), v: prev ? (prev.v || 1) + 1 : 1 };
     fight.status = 'done';
     save();
     const { msg, live } = await send(oppId, {
@@ -360,7 +375,7 @@ export function openBoard(fid, qrCode = null) {
       }, h('span', { html: ICON.redo, style: { display: 'contents' } }), 'Revanche'),
       h('div', { class: 'btns two' },
         h('button', { class: 'btn block', id: 'done', onclick: () => closeIt() }, 'Terminer'),
-        h('button', { class: 'btn ghost block', onclick: () => { step = { s: 'winner' }; correcting = true; phase = 'result'; draw(); } }, 'Corriger'),
+        h('button', { class: 'btn ghost block', onclick: () => { loadTally(); correcting = true; phase = 'result'; draw(); } }, 'Corriger'),
       ),
     );
   };
@@ -371,11 +386,27 @@ export function openBoard(fid, qrCode = null) {
   return closeIt;
 }
 
+export function tallyOf(fight, id) {
+  const r = fight.result || {};
+  if (r.tally && Array.isArray(r.tally[id])) return r.tally[id];
+  return r.method === 'submission' && r.winner === id ? [r.sub] : [];
+}
+
 export function sentence(fight, oppName) {
   const r = fight.result;
-  if (!r.winner) return 'Match nul';
-  const who = r.winner === state.me.id ? 'Tu gagnes' : `${oppName} gagne`;
-  return r.method === 'submission' ? `${who} par ${subName(r.sub).toLowerCase()}` : `${who} aux points`;
+  const me = state.me.id;
+  const oppId = fight.a === me ? fight.b : fight.a;
+  const a = tallyOf(fight, me).length;
+  const b = tallyOf(fight, oppId).length;
+  const subs = (n) => `${n} soumission${n > 1 ? 's' : ''}`;
+  if (!r.winner) return a + b ? `Égalité, ${a} soumission${a > 1 ? 's' : ''} partout` : 'Match nul';
+  const who = r.winner === me ? 'Tu gagnes' : `${oppName} gagne`;
+  if (r.method === 'submission') {
+    const w = r.winner === me ? a : b; const l = r.winner === me ? b : a;
+    if (w === 1 && l === 0) return `${who} par ${r.sub ? subName(r.sub).toLowerCase() : 'soumission'}`;
+    return `${who} ${subs(w)} à ${l}`;
+  }
+  return a + b ? `${who} aux points (${a}–${b} en soumissions)` : `${who} aux points`;
 }
 
 // Moteur de recherche des soumissions (Kimono / Grappling bien séparés)
@@ -461,7 +492,9 @@ onMessage((msg) => {
       const cur = f.result;
       const newer = !cur || (r.v || 1) > (cur.v || 1) || ((r.v || 1) === (cur.v || 1) && (r.at < cur.at || (r.at === cur.at && r.by < cur.by)));
       if (newer) {
-        f.result = { winner: r.winner || null, method: r.method, sub: SUB_BY_ID[r.sub] ? r.sub : null, by: r.by, at: r.at, v: r.v || 1 };
+        const cleanList = (l) => (Array.isArray(l) ? l.slice(0, 40).map((x) => (SUB_BY_ID[x] ? x : null)) : []);
+        const tally = r.tally && typeof r.tally === 'object' ? { [f.a]: cleanList(r.tally[f.a]), [f.b]: cleanList(r.tally[f.b]) } : null;
+        f.result = { winner: r.winner || null, method: r.method, sub: SUB_BY_ID[r.sub] ? r.sub : null, tally, by: r.by, at: r.at, v: r.v || 1 };
         f.status = 'done';
       }
       save();

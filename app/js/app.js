@@ -1,6 +1,6 @@
 // PORRADA — démarrage, onglets, en-tête.
 
-import { state, save, onChange, unreadTotal } from './store.js';
+import { state, save, onChange, unreadTotal, keepStorage, isIOS, isStandalone } from './store.js';
 import { h, ICON, fill, sfx, haptic, setPrefs, setTabTitle, openCount, unlockAudio, gradDefs } from './ui.js';
 import { startNet, onStatus, netStatus, deliver } from './net.js';
 import { scan } from './qr.js';
@@ -10,14 +10,14 @@ import * as amis from './screens/amis.js';
 import * as journal from './screens/journal.js';
 import * as compet from './screens/compet.js';
 import * as combat from './screens/combat.js';
-import { openSettings, openMyProfile } from './screens/settings.js';
+import { openSettings, openMyProfile, transferAccount } from './screens/settings.js';
 import { startOnboarding } from './screens/onboarding.js';
 
 const TABS = [
   { id: 'jeu', label: 'Mon jeu', icon: 'game', mod: jeu },
   { id: 'amis', label: 'Amis', icon: 'friends', mod: amis },
   { id: 'journal', label: 'Journal', icon: 'journal', mod: journal },
-  { id: 'compet', label: 'Compét.', icon: 'compet', mod: compet },
+  { id: 'compet', label: 'Compétition', icon: 'compet', mod: compet },
 ];
 
 const root = document.getElementById('app');
@@ -68,12 +68,22 @@ export function render(anim = null) {
   const y = window.scrollY;
   const screen = h('main', { class: 'screen' + (anim ? ' ' + anim : ''), id: 'screen-' + tab.id });
   screen.append(tab.mod.render());
+  if (isIOS && !isStandalone) { const top = screen.querySelector('.top'); if (top) top.after(installBanner()); }
   fill(root, screen);
   screenEl = screen;
   document.body.dataset.tab = tab.id;
   setTabTitle(tab.label);
   syncTabbar();
   if (!anim) window.scrollTo(0, y);
+}
+
+// Dans Safari (pas installée) : on rappelle d'installer l'appli et de transférer le compte.
+function installBanner() {
+  return h('div', { class: 'card tint stack', style: { marginBottom: '14px' }, id: 'install-banner' },
+    h('div', { class: 'hstack' }, h('span', { class: 'tipic', html: ICON.share }), h('div', { class: 'grow' }, h('h3', null, 'Installe l’appli'), h('div', { class: 'small muted' }, 'Ici, tu es dans Safari. Ton compte doit aller dans l’appli installée.'))),
+    h('div', { class: 'small' }, '1. Touche « Transférer mon compte » pour copier ton code.  2. Partager › « Sur l’écran d’accueil ».  3. Ouvre l’icône, « J’ai déjà un compte », colle le code.'),
+    h('button', { class: 'btn primary block', onclick: transferAccount }, 'Transférer mon compte'),
+  );
 }
 
 export function go(id) {
@@ -113,6 +123,7 @@ function boot() {
   booted = true;
   render('in-f');
   if (!first) return;
+  keepStorage();
   startNet();
   combat.resume();
   journal.resume();

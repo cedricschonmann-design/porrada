@@ -4,9 +4,9 @@ import { state, save, rid, headToHead, onChange } from '../store.js';
 import { h, fill, ICON, push, toast, sfx, haptic, hm, longDay } from '../ui.js';
 import { onMessage, onStatus, send } from '../net.js';
 import { avatarOf } from '../people.js';
-import { subName } from '../data/submissions.js';
+import { sentence } from './combat.js';
 
-const QUICK = ['Oss 🤙', 'Open mat ce soir ?', 'Revanche ?', 'Bien joué 👊', 'J’arrive', 'Pas ce soir'];
+const QUICK = ['Oss', 'Open mat ce soir ?', 'Revanche ?', 'Bien joué', 'J’arrive', 'Pas ce soir'];
 let openFor = null; // ami dont la conversation est ouverte
 let redraw = null;
 
@@ -63,8 +63,7 @@ export function openChat(friendId) {
         const d = longDay(it.ts);
         if (d !== lastDay) { out.push(h('div', { class: 'day-sep' }, d)); lastDay = d; }
         if (it.kind === 'fight') {
-          const r = it.fi.result;
-          const txt = !r.winner ? 'Match nul' : r.winner === state.me.id ? `Tu gagnes ${r.method === 'submission' ? 'par ' + subName(r.sub).toLowerCase() : 'aux points'}` : `${f().name} gagne ${r.method === 'submission' ? 'par ' + subName(r.sub).toLowerCase() : 'aux points'}`;
+          const txt = sentence(it.fi, f().name);
           out.push(h('div', { class: 'event-pill' }, h('span', { html: ICON.fist, style: { display: 'contents' } }), `Combat · ${txt}`));
           return;
         }

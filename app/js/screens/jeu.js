@@ -19,52 +19,63 @@ export function render() {
         h('button', { class: 'btn white lg block', id: 'start-quiz', style: { marginTop: '18px' }, onclick: () => quiz(null) }, h('span', { html: ICON.play, style: { display: 'contents' } }), 'Commencer'),
       ),
       h('div', { class: 'stack', style: { marginTop: '14px' } },
-        tip('🎯', 'Ton style', 'Parmi 8 profils de jeu : le Verrou, l’Araignée, le Passeur…'),
-        tip('🌳', 'Ton arbre de jeu', 'Du debout à la finition, avec ton plan B.'),
-        tip('🔁', 'À refaire', 'Ton jeu évolue : refais le questionnaire, tes versions restent gardées.'),
+        tip('game', 'Ton style', 'Parmi 12 styles de jeu, calculé à partir de tes réponses.'),
+        tip('chart', 'Ton plan', 'Construit avec tes gardes, tes passages, ton debout et ta morphologie.'),
+        tip('redo', 'À refaire', 'Ton jeu évolue : refais le questionnaire, tes versions restent gardées.'),
       ),
     );
   }
   return h('div', null, header('Mon jeu'), planView(last, versions.length));
 }
 
-const tip = (em, t, s) => h('div', { class: 'rowc' }, h('span', { style: { fontSize: '26px', width: '36px', textAlign: 'center' } }, em), h('div', { class: 'grow' }, h('div', { class: 't' }, t), h('div', { class: 's' }, s)));
+const tip = (ic, t, s) => h('div', { class: 'rowc' }, h('span', { class: 'tipic', html: ICON[ic] }), h('div', { class: 'grow' }, h('div', { class: 't' }, t), h('div', { class: 's' }, s)));
 
-function acc(icon, title, body, open = false) {
+function acc(ic, title, body, open = false) {
   const el = h('div', { class: 'acc' + (open ? ' open' : '') });
-  const btn = h('button', { 'aria-expanded': String(open), onclick: () => { const o = el.classList.toggle('open'); btn.setAttribute('aria-expanded', String(o)); sfx(o ? 'open' : 'close'); } },
-    h('span', { class: 'ic' }, icon), h('span', { class: 't' }, title), h('span', { class: 'chev', html: ICON.chev }));
+  const btn = h('button', { 'aria-expanded': String(open), onclick: () => { const o = el.classList.toggle('open'); btn.setAttribute('aria-expanded', String(o)); haptic('light'); } },
+    h('span', { class: 'ic', html: ICON[ic] || '' }), h('span', { class: 't' }, title), h('span', { class: 'chev', html: ICON.chev }));
   el.append(btn, h('div', { class: 'acc-body' }, h('div', null, h('div', { class: 'acc-in' }, body))));
   return el;
 }
 
 function planView(p, count, { readonly = false } = {}) {
+  const planA = Array.isArray(p.planA) ? { name: 'Ton plan A', steps: p.planA } : p.planA;
+  const planB = p.planB || { name: '', steps: [] };
   return h('div', { id: 'plan', class: 'stack' },
     h('div', { class: 'card hero grad style-card' },
       h('div', { class: 'k' }, `Ton style · ${day(p.at)}`),
-      h('div', { class: 'name' }, `${p.style.em || ''} ${p.style.name}`.trim()),
+      h('div', { class: 'name' }, p.style.name),
       h('p', { style: { opacity: '.92' } }, p.style.pitch),
+      p.why ? h('p', { style: { opacity: '.92', marginTop: '8px', fontWeight: '700' } }, p.why) : null,
       p.tags ? h('div', { class: 'chips' }, p.tags.map((t) => h('span', { class: 'chip static' }, t))) : null,
     ),
+    p.top3 ? h('div', { class: 'card stack' },
+      h('h3', null, 'Tes styles les plus proches'),
+      h('div', { class: 'stack', style: { gap: '10px' } }, p.top3.map((x, i) => h('div', { class: 'hbar' },
+        h('span', null, x.name), h('b', null, `${x.pct} %`),
+        h('div', { class: 'track' }, h('i', { style: { width: `${x.pct}%`, background: i === 0 ? 'var(--grad)' : 'var(--faint)', animationDelay: `${i * 90}ms` } })),
+      ))),
+    ) : null,
     p.flow ? h('div', { class: 'card' },
       h('h3', { style: { marginBottom: '12px' } }, 'Ton arbre de jeu'),
       h('div', { class: 'flow' }, p.flow.map((n, i) => h('div', { class: 'node' + (n.key ? ' key' : '') }, h('span', { class: 'dot' }, i + 1), h('div', null, h('div', { class: 't' }, n.t), h('div', { class: 's' }, n.s))))),
     ) : null,
     h('div', null,
-      acc('🧍', 'Debout', h('ul', { class: 'bullets' }, p.stand.map((x) => h('li', null, x)))),
-      acc('🅰️', 'Ton plan A', h('ol', { class: 'steps' }, p.planA.map((x) => h('li', null, x))), !readonly),
-      acc('🎯', 'Tes finitions', h('div', null,
+      acc('play', `Plan A : ${planA.name}`, h('ol', { class: 'steps' }, planA.steps.map((x) => h('li', null, x))), !readonly),
+      acc('user', 'Debout', h('ul', { class: 'bullets' }, p.stand.map((x) => h('li', null, x)))),
+      acc('game', 'Tes finitions', h('div', null,
         p.finishes.map((f) => h('div', { class: 'fin-row' }, h('b', null, f.name), f.warn ? h('span', { class: 'tag danger' }, 'Interdit pour toi') : f.fav ? h('span', { class: 'tag fav' }, 'Ta préférée') : h('span', { class: 'tag ok' }, 'Autorisée'))),
         p.finishes.some((f) => f.warn) ? h('p', { class: 'small muted', style: { marginTop: '8px' } }, `${[...new Set(p.finishes.filter((f) => f.warn).map((f) => f.warn))].join(' ; ')}. Garde-les pour l’entraînement.`) : null,
-        p.fed ? null : h('p', { class: 'small muted', style: { marginTop: '8px' } }, 'Pas de règlement choisi : vérifie ce qui t’est interdit dans l’onglet Compét.'),
+        p.fed ? null : h('p', { class: 'small muted', style: { marginTop: '8px' } }, 'Pas de règlement choisi : vérifie ce qui t’est interdit dans l’espace Compétition.'),
       )),
-      p.counters ? acc('🔀', 'S’il fait ça, tu fais ça', h('div', { class: 'stack', style: { gap: '8px' } }, p.counters.map(([a, b]) => h('div', { class: 'week' }, h('b', null, a), h('span', null, b))))) : null,
-      acc(p.planB.em || '🅱️', `Plan B : ${p.planB.name}`, h('div', { class: 'stack' }, h('p', { class: 'muted' }, p.planB.pitch), h('ol', { class: 'steps' }, p.planB.steps.map((x) => h('li', null, x))))),
-      acc('🛡️', 'Ta défense prioritaire', h('div', { class: 'stack' }, p.defense.map((d) => h('div', null, h('b', null, d.t), h('ul', { class: 'bullets', style: { marginTop: '8px' } }, d.b.map((x) => h('li', null, x))))))),
-      p.legs ? acc('🦵', 'Les clés de jambe', h('ul', { class: 'bullets' }, p.legs.map((x) => h('li', null, x)))) : null,
-      p.fragile && p.fragile.length ? acc('🩹', 'Ce que tu ménages', h('ul', { class: 'bullets' }, p.fragile.map((x) => h('li', null, x)))) : null,
-      acc('🗓️', 'Ton plan sur 4 semaines', h('div', { class: 'stack', style: { gap: '8px' } }, p.weeks.map((w) => h('div', { class: 'week' }, h('b', null, `${w.w} · ${w.t || ''}`.replace(/ · $/, '')), h('span', null, w.drill || w.t), w.spar ? h('span', { class: 'muted small' }, w.spar) : null)))),
-      p.notes.length ? acc('✍️', 'Tes précisions', h('ul', { class: 'bullets' }, p.notes.map((n) => h('li', null, h('span', { class: 'muted' }, n.q + ' '), '« ' + n.t + ' »')))) : null,
+      p.counters ? acc('swords', 'S’il fait ça, tu fais ça', h('div', { class: 'stack', style: { gap: '8px' } }, p.counters.map(([a, b]) => h('div', { class: 'week' }, h('b', null, a), h('span', null, b))))) : null,
+      acc('redo', `Plan B : ${planB.name}`, h('div', { class: 'stack' }, planB.pitch || planB.style ? h('p', { class: 'muted' }, planB.pitch || `La route du style ${planB.style}.`) : null, h('ol', { class: 'steps' }, planB.steps.map((x) => h('li', null, x))))),
+      p.tips && p.tips.length ? acc('sparkles', 'Joue avec ton corps', h('ul', { class: 'bullets' }, p.tips.map((x) => h('li', null, x)))) : null,
+      acc('shield', 'Ta défense prioritaire', h('div', { class: 'stack' }, p.defense.map((d) => h('div', null, h('b', null, d.t), h('ul', { class: 'bullets', style: { marginTop: '8px' } }, d.b.map((x) => h('li', null, x))))))),
+      p.legs ? acc('bolt', 'Les clés de jambe', h('ul', { class: 'bullets' }, p.legs.map((x) => h('li', null, x)))) : null,
+      p.fragile && p.fragile.length ? acc('heart', 'Ce que tu ménages', h('ul', { class: 'bullets' }, p.fragile.map((x) => h('li', null, x)))) : null,
+      acc('calendar', 'Ton plan sur 4 semaines', h('div', { class: 'stack', style: { gap: '8px' } }, p.weeks.map((w) => h('div', { class: 'week' }, h('b', null, `${w.w} · ${w.t || ''}`.replace(/ · $/, '')), h('span', null, w.drill || w.t), w.spar ? h('span', { class: 'muted small' }, w.spar) : null)))),
+      p.notes.length ? acc('note', 'Tes précisions', h('ul', { class: 'bullets' }, p.notes.map((n) => h('li', null, h('span', { class: 'muted' }, n.q + ' '), '« ' + n.t + ' »')))) : null,
     ),
     p.goal ? h('div', { class: 'card tint' }, p.goal) : null,
     readonly ? null : h('div', { class: 'btns', style: { marginTop: '6px' } },
@@ -79,7 +90,7 @@ function versionsView() {
     h('h1', { class: 'page-title' }, 'Mes versions'),
     h('div', { class: 'rows' }, [...state.game.versions].reverse().map((v, i) => h('button', {
       class: 'rowc', onclick: () => push(() => planView(v, 0, { readonly: true }), { title: v.style.name }),
-    }, h('span', { style: { fontSize: '26px' } }, v.style.em || '🥋'), h('div', { class: 'grow' }, h('div', { class: 't' }, v.style.name), h('div', { class: 's' }, `${day(v.at)}${i === 0 ? ' · actuelle' : ''}`)), h('span', { class: 'chev', html: ICON.chev })))),
+    }, h('span', { class: 'tipic', html: ICON.game }), h('div', { class: 'grow' }, h('div', { class: 't' }, v.style.name), h('div', { class: 's' }, `${day(v.at)}${i === 0 ? ' · actuelle' : ''}`)), h('span', { class: 'chev', html: ICON.chev })))),
   ), { title: 'Mes versions' });
 }
 
@@ -127,7 +138,6 @@ function quiz(prev) {
       const opts = h('div', { class: 'opts' });
       const drawOpts = () => fill(opts,
         ...q.opts.map((o) => h('button', { class: 'opt' + (many ? '' : ' one'), 'aria-pressed': String(isOn(o.v)), 'data-silent': '', onclick: () => toggle(o.v) },
-          o.em ? h('span', { class: 'em' }, o.em) : null,
           h('span', { class: 'grow' }, o.l, o.d ? h('span', { class: 'd' }, o.d) : null),
           h('span', { class: 'mark', html: ICON.check }))),
         h('button', {
@@ -140,7 +150,7 @@ function quiz(prev) {
             drawOpts(); refresh();
             if (show) setTimeout(() => ta.focus(), 50);
           },
-        }, h('span', { class: 'em' }, '✍️'), h('span', { class: 'grow' }, 'Autre'), h('span', { class: 'mark', html: ICON.check })),
+        }, h('span', { class: 'grow' }, 'Autre', h('span', { class: 'd' }, 'Écris ta propre réponse')), h('span', { class: 'mark', html: ICON.check })),
       );
       drawOpts();
       refresh();
@@ -175,7 +185,7 @@ function quiz(prev) {
         const a = answers[q.id];
         if (a) clean[q.id] = { v: a.v === '__other' ? null : a.v, other: (a.other || '').trim() };
       }
-      const steps = ['Ton style…', 'Ton arbre de jeu…', 'Tes finitions et ce qui t’est interdit…', 'Ton plan sur 4 semaines…'];
+      const steps = ['Tes 16 traits de jeu…', 'Comparaison avec 12 styles…', 'Ton plan avec tes gardes et tes passages…', 'Tes finitions et ce qui t’est interdit…', 'Ton plan sur 4 semaines…'];
       const list = h('div', { class: 'stack', style: { marginTop: '22px' } });
       fill(wrap, h('div', { style: { minHeight: '60vh', display: 'grid', alignContent: 'center', justifyItems: 'center', gap: '18px', textAlign: 'center' } },
         avatarOf(state.me, { size: 96, ring: true }),

@@ -126,7 +126,7 @@ export function unlockAudio() {
     if (!audio) {
       audio = new (window.AudioContext || window.webkitAudioContext)();
       master = audio.createGain();
-      master.gain.value = 0.9;
+      master.gain.value = 1;
       master.connect(audio.destination);
     }
     if (audio.state === 'suspended') audio.resume();
@@ -137,72 +137,51 @@ export function unlockAudio() {
     o.start(); o.stop(audio.currentTime + 0.01);
   } catch (e) { /* pas de son */ }
 }
-function tone(freq, dur, { type = 'sine', vol = 0.08, to = null, at = 0, attack = 0.004 } = {}) {
+// Notes douces : sinus, attaque lente, filtre qui arrondit, volume bas.
+function tone(freq, dur, { type = 'sine', vol = 0.035, to = null, at = 0, attack = 0.015, cutoff = 2600 } = {}) {
   if (!audio) return;
   const t0 = audio.currentTime + at;
   const o = audio.createOscillator();
+  const f = audio.createBiquadFilter();
   const g = audio.createGain();
   o.type = type;
   o.frequency.setValueAtTime(freq, t0);
-  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur * 0.8);
+  f.type = 'lowpass';
+  f.frequency.value = cutoff;
+  f.Q.value = 0.4;
   g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
+  g.gain.linearRampToValueAtTime(vol, t0 + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(master);
+  o.connect(f).connect(g).connect(master);
   o.start(t0);
-  o.stop(t0 + dur + 0.03);
+  o.stop(t0 + dur + 0.05);
 }
-function whoosh(dur = 0.18, { from = 400, to = 2400, vol = 0.05, at = 0 } = {}) {
-  if (!audio) return;
-  if (!noiseBuf) {
-    noiseBuf = audio.createBuffer(1, audio.sampleRate * 0.5, audio.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  }
-  const t0 = audio.currentTime + at;
-  const src = audio.createBufferSource();
-  src.buffer = noiseBuf;
-  const f = audio.createBiquadFilter();
-  f.type = 'bandpass';
-  f.Q.value = 1.2;
-  f.frequency.setValueAtTime(from, t0);
-  f.frequency.exponentialRampToValueAtTime(to, t0 + dur);
-  const g = audio.createGain();
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.35);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(f).connect(g).connect(master);
-  src.start(t0);
-  src.stop(t0 + dur + 0.02);
-}
+const chord = (notes, dur, opts = {}) => notes.forEach((n, i) => tone(n, dur, { ...opts, at: (opts.at || 0) + i * (opts.spread || 0) }));
+
+// Sons de l'appli : seulement aux moments qui comptent, jamais à chaque bouton.
 const SFX = {
-  tap: () => tone(1500, 0.03, { type: 'triangle', vol: 0.035, to: 900 }),
-  tab: () => { tone(620, 0.05, { vol: 0.05, to: 820 }); },
-  toggle: () => tone(900, 0.05, { type: 'triangle', vol: 0.05, to: 1350 }),
-  untoggle: () => tone(1100, 0.05, { type: 'triangle', vol: 0.045, to: 700 }),
-  open: () => whoosh(0.2, { from: 300, to: 1800, vol: 0.045 }),
-  close: () => whoosh(0.16, { from: 1600, to: 300, vol: 0.035 }),
-  push: () => whoosh(0.22, { from: 500, to: 2600, vol: 0.035 }),
-  success: () => { tone(784, 0.12, { vol: 0.07 }); tone(1175, 0.2, { vol: 0.07, at: 0.09 }); },
-  error: () => { tone(200, 0.12, { type: 'square', vol: 0.035 }); tone(160, 0.16, { type: 'square', vol: 0.035, at: 0.12 }); },
-  send: () => { tone(520, 0.12, { vol: 0.06, to: 1400 }); whoosh(0.15, { from: 800, to: 3000, vol: 0.025 }); },
-  receive: () => { tone(988, 0.09, { vol: 0.07 }); tone(1480, 0.16, { vol: 0.07, at: 0.08 }); },
-  give: () => { tone(660, 0.07, { type: 'triangle', vol: 0.08, to: 1320 }); tone(1760, 0.12, { vol: 0.05, at: 0.06 }); },
-  take: () => { tone(520, 0.12, { type: 'triangle', vol: 0.08, to: 300 }); },
-  del: () => tone(420, 0.12, { type: 'triangle', vol: 0.05, to: 160 }),
-  pop: () => tone(400, 0.08, { vol: 0.07, to: 900 }),
-  notify: () => { tone(1047, 0.09, { vol: 0.07 }); tone(1568, 0.18, { vol: 0.06, at: 0.1 }); },
-  win: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, { type: 'triangle', vol: 0.09, at: i * 0.1 })); tone(1568, 0.5, { vol: 0.06, at: 0.42 }); },
-  lose: () => { [392, 330, 262].forEach((f, i) => tone(f, 0.22, { type: 'triangle', vol: 0.07, at: i * 0.16 })); },
-  levelup: () => { [523, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.14, { type: 'triangle', vol: 0.08, at: i * 0.08 })); },
+  success: () => { tone(659, 0.35, { vol: 0.03 }); tone(988, 0.5, { vol: 0.028, at: 0.09 }); },
+  error: () => tone(220, 0.3, { vol: 0.035, to: 185, cutoff: 900 }),
+  send: () => tone(587, 0.28, { vol: 0.025, to: 880 }),
+  receive: () => { tone(784, 0.3, { vol: 0.028 }); tone(1047, 0.42, { vol: 0.024, at: 0.1 }); },
+  notify: () => { tone(880, 0.32, { vol: 0.03 }); tone(1175, 0.5, { vol: 0.026, at: 0.12 }); },
+  give: () => { tone(659, 0.25, { vol: 0.035 }); tone(988, 0.35, { vol: 0.03, at: 0.07 }); },
+  take: () => tone(392, 0.3, { vol: 0.035, to: 330, cutoff: 1500 }),
+  del: () => tone(330, 0.25, { vol: 0.025, to: 247, cutoff: 1200 }),
+  pop: () => tone(740, 0.18, { vol: 0.022 }),
+  win: () => { chord([523, 659, 784, 1047], 0.9, { vol: 0.03, spread: 0.11 }); },
+  lose: () => { chord([440, 349, 294], 0.7, { vol: 0.03, spread: 0.16, cutoff: 1400 }); },
+  levelup: () => { chord([523, 659, 784, 1047, 1319], 0.8, { vol: 0.025, spread: 0.08 }); },
 };
+// Chrono : plus présent (on doit l'entendre sur le tapis) mais rond, sans grésillement.
 const TIMER_SFX = {
-  count: () => tone(520, 0.07, { type: 'square', vol: 0.12 }),
-  count3: () => tone(660, 0.15, { type: 'square', vol: 0.18 }),
-  go: () => { tone(880, 0.6, { type: 'square', vol: 0.2 }); tone(1320, 0.6, { vol: 0.1 }); },
-  warn: () => { tone(988, 0.1, { type: 'square', vol: 0.14 }); tone(988, 0.1, { type: 'square', vol: 0.14, at: 0.16 }); },
-  buzzer: () => { tone(220, 0.9, { type: 'sawtooth', vol: 0.22 }); tone(196, 0.8, { type: 'sawtooth', vol: 0.18, at: 0.12 }); },
-  bell: () => { tone(1320, 1.2, { vol: 0.16 }); tone(1980, 0.9, { vol: 0.06 }); tone(1320, 1.2, { vol: 0.12, at: 0.35 }); },
+  count: () => tone(660, 0.22, { vol: 0.07, attack: 0.008 }),
+  count3: () => tone(880, 0.32, { vol: 0.1, attack: 0.008 }),
+  go: () => { chord([880, 1320], 0.9, { vol: 0.1, attack: 0.01 }); },
+  warn: () => { tone(988, 0.25, { vol: 0.08, attack: 0.01 }); tone(988, 0.25, { vol: 0.08, at: 0.3, attack: 0.01 }); },
+  buzzer: () => { chord([392, 494, 587], 1.6, { vol: 0.11, attack: 0.02, cutoff: 1800 }); },
+  bell: () => { tone(1047, 1.8, { vol: 0.1, attack: 0.005 }); tone(2093, 1.2, { vol: 0.03, attack: 0.005 }); tone(1047, 1.6, { vol: 0.08, at: 0.45, attack: 0.005 }); },
 };
 export function sfx(name) {
   try {
@@ -244,8 +223,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest && e.target.closest('button');
   if (!b || b.disabled || b.dataset.silent !== undefined) return;
   unlockAudio();
-  if (b.matches('.hit, .seg button, .switch, .tabbar button')) return; // ils ont leur propre son
-  sfx('tap');
+  if (b.matches('.hit, .seg button, .switch, .tabbar button')) return;
   haptic('light');
 }, true);
 

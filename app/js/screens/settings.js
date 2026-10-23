@@ -1,12 +1,13 @@
 // Réglages (la roue dentée) et mon profil.
 
-import { state, save, onChange, myCard, exportData, importData, wipe, ageCategory, myRecord } from '../store.js';
+import { state, save, onChange, myCard, exportData, importData, wipe, ageCategory, myRecord, exportTransfer } from '../store.js';
 import { h, fill, ICON, push, sheet, toast, seg, toggle, belt, BELTS, BELT_NAME, AGE_NAME, ask, sfx, haptic, confetti, copyText, since, countUp } from '../ui.js';
 import { toCode, netStatus, stamped, send } from '../net.js';
 import { qrSvg } from '../qr.js';
 import { avatarOf, pickPhoto, squareJpeg } from '../people.js';
 import { REFEREES } from '../data/referees.js';
 import { BUILD } from '../version.js';
+import { palmaresCard } from './palmares.js';
 
 const item = ({ ic, c, t, s, v, onclick, right, danger, id }) => h(onclick ? 'button' : 'div', { class: 'item' + (danger ? ' danger' : ''), onclick, id },
   ic ? h('span', { class: 'ic ' + (c || ''), html: ICON[ic] }) : null,
@@ -205,7 +206,8 @@ export function openSettings() {
 
         h('div', { class: 'group-title' }, 'Mes données'),
         h('div', { class: 'group' },
-          item({ ic: 'download', c: 'c5', t: 'Exporter une sauvegarde', s: 'À faire avant de changer de téléphone', onclick: exportFile }),
+          item({ ic: 'share', c: 'c2', t: 'Transférer mon compte', s: 'Vers l’appli installée ou un autre téléphone', onclick: transferAccount, id: 'transfer' }),
+          item({ ic: 'download', c: 'c5', t: 'Exporter une sauvegarde', s: 'Un fichier à garder', onclick: exportFile }),
           item({ ic: 'upload', c: 'c7', t: 'Importer une sauvegarde', onclick: importFile }),
           item({ ic: 'trash', c: 'c6', t: 'Supprimer mon compte', danger: true, onclick: deleteAccount }),
         ),
@@ -229,6 +231,23 @@ export function openSettings() {
 export function live(page, fn) {
   let raf = 0;
   page.onClosed(onChange(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (page.isOpen()) fn(); }); }));
+}
+
+export async function transferAccount() {
+  let code = '';
+  try { code = await exportTransfer(); } catch (e) { toast('Impossible de préparer le code.'); return; }
+  const copy = async () => {
+    const ok = await copyText(code);
+    toast(ok ? 'Code copié.' : 'Copie impossible : utilise « Partager ».', { ok, sound: ok ? 'success' : null });
+  };
+  sheet(() => h('div', { class: 'stack' },
+    h('h2', null, 'Transférer mon compte'),
+    h('p', { class: 'muted' }, 'Copie ce code, ouvre PORRADA depuis l’icône de ton écran d’accueil (ou sur ton nouveau téléphone), touche « J’ai déjà un compte » et colle-le.'),
+    h('div', { class: 'card small muted', style: { wordBreak: 'break-all', maxHeight: '90px', overflow: 'hidden', fontFamily: 'ui-monospace, monospace', fontSize: '11px' } }, code.slice(0, 260) + (code.length > 260 ? '…' : '')),
+    h('button', { class: 'btn primary lg block', id: 'copy-transfer', onclick: copy }, h('span', { html: ICON.copy, style: { display: 'contents' } }), 'Copier le code'),
+    navigator.share ? h('button', { class: 'btn block', onclick: () => navigator.share({ text: code }).catch(() => {}) }, h('span', { html: ICON.share, style: { display: 'contents' } }), 'Partager le code') : null,
+    h('p', { class: 'hint' }, 'Ce code contient toutes tes données : ne l’envoie qu’à toi-même.'),
+  ));
 }
 
 function exportFile() {
@@ -299,14 +318,14 @@ function trophies() {
   const sessions = state.journal.length;
   const given = state.journal.reduce((n, s) => n + (s.given || []).length, 0);
   return [
-    ['🥋', 'Premier cours', sessions >= 1],
-    ['🔥', '10 séances', sessions >= 10],
-    ['🏆', '1re victoire', rec.wins >= 1],
-    ['⚡', '3 victoires d’affilée', rec.streak >= 3],
-    ['🎯', '10 soumissions', given >= 10],
-    ['🧠', 'Stratège', state.game.versions.length >= 1],
-    ['🤝', '3 amis', Object.keys(state.friends).length >= 3],
-    ['🎖️', 'Promu', (me.promotions || []).length >= 1],
+    ['journal', 'Premier cours', sessions >= 1],
+    ['flame', '10 séances', sessions >= 10],
+    ['compet', '1re victoire', rec.wins >= 1],
+    ['bolt', '3 victoires d’affilée', rec.streak >= 3],
+    ['game', '10 soumissions', given >= 10],
+    ['sparkles', 'Stratège', state.game.versions.length >= 1],
+    ['friends', '3 amis', Object.keys(state.friends).length >= 3],
+    ['medal', 'Promu', (me.promotions || []).length >= 1],
   ];
 }
 
@@ -336,8 +355,10 @@ export function openMyProfile() {
           stat(rec.wins, rec.wins > 1 ? 'Victoires' : 'Victoire'),
           stat(given, 'Soumissions placées'),
         ),
+        h('div', { class: 'section-head section' }, h('h3', null, 'Compétitions')),
+        palmaresCard(),
         h('div', { class: 'section-head section' }, h('h3', null, 'Trophées')),
-        h('div', { class: 'trophies' }, trophies().map(([e, l, on]) => h('div', { class: 'trophy' + (on ? ' on' : '') }, h('span', { class: 'e' }, e), l))),
+        h('div', { class: 'trophies' }, trophies().map(([e, l, on]) => h('div', { class: 'trophy' + (on ? ' on' : '') }, h('span', { class: 'e', html: ICON[e] }), l))),
         (me.promotions || []).length ? h('div', null,
           h('div', { class: 'section-head section' }, h('h3', null, 'Mes promotions')),
           h('div', { class: 'group noicon' }, [...me.promotions].reverse().map((p) => h('div', { class: 'item' }, belt(p.belt, p.stripes), h('div', { class: 'grow t' }, `${BELT_NAME[p.belt]}${p.stripes ? `, ${p.stripes} barrette${p.stripes > 1 ? 's' : ''}` : ''}`), h('span', { class: 'v' }, new Date(p.at).toLocaleDateString('fr-CH'))))),

@@ -162,9 +162,12 @@ export function headToHead(friendId) {
   const fights = state.fights
     .filter((f) => f.status === 'done' && f.result && [f.a, f.b].includes(friendId) && [f.a, f.b].includes(me))
     .sort((x, y) => (y.startAt || y.createdAt) - (x.startAt || x.createdAt));
-  const s = { wins: 0, losses: 0, draws: 0, subWins: 0, ptsWins: 0, subLosses: 0, ptsLosses: 0, fights };
+  const s = { wins: 0, losses: 0, draws: 0, subWins: 0, ptsWins: 0, subLosses: 0, ptsLosses: 0, subsFor: 0, subsAgainst: 0, fights };
+  const tl = (f, id) => (f.result.tally && Array.isArray(f.result.tally[id]) ? f.result.tally[id] : f.result.method === 'submission' && f.result.winner === id ? [f.result.sub] : []);
   for (const f of fights) {
     const r = f.result;
+    s.subsFor += tl(f, me).length;
+    s.subsAgainst += tl(f, friendId).length;
     if (!r.winner) { s.draws++; continue; }
     if (r.winner === me) { s.wins++; r.method === 'submission' ? s.subWins++ : s.ptsWins++; }
     else { s.losses++; r.method === 'submission' ? s.subLosses++ : s.ptsLosses++; }
@@ -204,3 +207,42 @@ export function wipe() {
   for (const k of Object.keys(state)) delete state[k];
   Object.assign(state, fresh());
 }
+
+// ---------- Transfert du compte (Safari → appli installée) ----------
+// Sur iPhone, l'appli de l'écran d'accueil a sa propre mémoire, séparée de Safari :
+// on emballe toutes les données dans un code à copier-coller.
+export async function exportTransfer() {
+  const json = JSON.stringify(state);
+  const bytes = new TextEncoder().encode(json);
+  if (typeof CompressionStream !== 'undefined') {
+    const cs = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+    const gz = new Uint8Array(await new Response(cs).arrayBuffer());
+    return 'PRDT1.' + b64url(gz);
+  }
+  return 'PRDT0.' + b64url(bytes);
+}
+
+export async function importTransfer(text) {
+  const m = String(text || '').match(/PRDT([01])\.([A-Za-z0-9_-]+)/);
+  if (!m) throw new Error('Ce n’est pas un code de transfert PORRADA.');
+  let bytes = unb64url(m[2]);
+  if (m[1] === '1') {
+    if (typeof DecompressionStream === 'undefined') throw new Error('Mets à jour ton iPhone pour importer ce code.');
+    const ds = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    bytes = new Uint8Array(await new Response(ds).arrayBuffer());
+  }
+  const data = JSON.parse(new TextDecoder().decode(bytes));
+  if (!data || !data.me) throw new Error('Ce code ne contient pas de compte.');
+  for (const k of Object.keys(state)) delete state[k];
+  Object.assign(state, fresh(), data, { settings: Object.assign(fresh().settings, data.settings || {}) });
+  state.device = rid(6);
+  save();
+}
+
+// Demande au téléphone de ne jamais effacer les données de l'appli
+export function keepStorage() {
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* tant pis */ }
+}
+
+export const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+export const isStandalone = navigator.standalone === true || (typeof matchMedia !== 'undefined' && matchMedia('(display-mode: standalone)').matches);

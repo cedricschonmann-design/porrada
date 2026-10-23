@@ -8,7 +8,7 @@ import { avatarOf, squareJpeg } from '../people.js';
 import { subName } from '../data/submissions.js';
 import { header, scanAny } from '../app.js';
 import { showMyCode, live } from './settings.js';
-import { openInvite } from './combat.js';
+import { openInvite, sentence, tallyOf } from './combat.js';
 import { openChat, lastMessage } from './chat.js';
 
 let query = '';
@@ -151,10 +151,8 @@ export function openPalmares(id) {
     const stat = (v, k, cls = '') => h('div', { class: 'stat ' + cls }, h('div', { class: 'v' }, v), h('div', { class: 'k' }, k));
     const subsWon = {}; const subsLost = {};
     for (const fi of s.fights) {
-      const r = fi.result;
-      if (r.method !== 'submission' || !r.sub) continue;
-      const bag = r.winner === state.me.id ? subsWon : subsLost;
-      bag[r.sub] = (bag[r.sub] || 0) + 1;
+      for (const x of tallyOf(fi, state.me.id)) if (x) subsWon[x] = (subsWon[x] || 0) + 1;
+      for (const x of tallyOf(fi, id)) if (x) subsLost[x] = (subsLost[x] || 0) + 1;
     }
     const subList = (bag) => Object.entries(bag).sort((a, b) => b[1] - a[1]).map(([sid, n]) => h('span', { class: 'chip static' }, subName(sid), h('span', { class: 'n' }, '×' + n)));
     return h('div', { class: 'stack' },
@@ -168,6 +166,7 @@ export function openPalmares(id) {
         stat(s.ptsLosses, 'Défaites aux points', 'take'),
         stat(s.fights.length, s.fights.length > 1 ? 'Combats' : 'Combat'),
       ),
+      h('div', { class: 'card between' }, h('div', null, h('h3', null, 'Soumissions'), h('div', { class: 'small muted' }, 'Tous vos rounds confondus')), h('div', { class: 'score' + (s.subsFor > s.subsAgainst ? ' lead' : '') }, h('span', null, s.subsFor), h('span', { class: 'sep' }, '–'), h('span', null, s.subsAgainst))),
       Object.keys(subsWon).length ? h('div', { class: 'card stack' }, h('h3', null, 'Tes soumissions sur lui'), h('div', { class: 'chips' }, subList(subsWon))) : null,
       Object.keys(subsLost).length ? h('div', { class: 'card stack' }, h('h3', null, 'Ses soumissions sur toi'), h('div', { class: 'chips' }, subList(subsLost))) : null,
       h('div', { class: 'section-head', style: { marginTop: '10px' } }, h('h3', null, 'Tous vos combats')),
@@ -177,11 +176,7 @@ export function openPalmares(id) {
 }
 
 export function describeResult(fi, otherName) {
-  const r = fi.result;
-  if (!r.winner) return 'Match nul';
-  const won = r.winner === state.me.id;
-  const how = r.method === 'submission' ? `par ${subName(r.sub).toLowerCase()}` : 'aux points';
-  return won ? `Tu gagnes ${how}` : `${otherName} gagne ${how}`;
+  return sentence(fi, otherName);
 }
 
 function fightRow(fi, otherName) {
