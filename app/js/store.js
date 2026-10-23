@@ -1,8 +1,6 @@
 // Données enregistrées sur le téléphone (localStorage). Rien ne part sur un serveur,
 // sauf les messages chiffrés échangés avec les amis (voir net.js).
 
-import { encodeAv, decodeAv, defaultFor } from './avatar.js';
-
 const KEY = 'porrada.v1';
 const listeners = new Set();
 
@@ -57,6 +55,8 @@ function load() {
     if (!st.messages) st.messages = {};
     if (!st.refChats) st.refChats = {};
     delete st.refLog;
+    if (st.me) { delete st.me.av; delete st.me.pic; }
+    for (const f of Object.values(st.friends || {})) { delete f.av; delete f.pic; }
     return st;
   } catch (e) {
     console.warn('Lecture des données impossible', e);
@@ -109,7 +109,7 @@ export function createMe(data) {
     createdAt: Date.now(),
     name: '', username: '', email: '', birthYear: null, sex: 'm',
     belt: 'blanche', stripes: 0, beltSince: Date.now(), promotions: [], academy: '', weight: null,
-    av: defaultFor(data.sex || 'm'), photo: null, pic: 'avatar',
+    photo: null,
     onboarded: false,
     ...data,
   };
@@ -121,7 +121,7 @@ export function myCard() {
   const m = state.me;
   return {
     t: 'card', id: m.id, name: m.name, u: m.username || '', belt: m.belt, stripes: m.stripes, key: m.key,
-    av: encodeAv(m.av), pic: m.photo && m.pic === 'photo' ? 1 : 0, ac: (m.academy || '').slice(0, 40),
+    pic: m.photo ? 1 : 0, ac: (m.academy || '').slice(0, 40),
   };
 }
 
@@ -136,10 +136,8 @@ export function upsertFriend(card) {
     belt: card.belt || 'blanche',
     stripes: card.stripes || 0,
     key: card.key || (prev && prev.key),
-    av: card.av ? decodeAv(card.av) : (prev && prev.av) || null,
     academy: card.ac != null ? String(card.ac).slice(0, 40) : (prev && prev.academy) || '',
     photo: card.pic === 0 ? null : (prev && prev.photo) || null,
-    pic: card.pic ? 'photo' : 'avatar',
     addedAt: prev ? prev.addedAt : Date.now(),
     unread: prev ? prev.unread || 0 : 0,
   };

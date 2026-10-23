@@ -8,27 +8,27 @@ import { REF_BY_ID, answer as topicAnswer, findSub, KEYWORDS, forMe, isYouth, IB
 export const CHARS = {
   ibjjf: {
     name: 'Paulo', line: 'Précis, à cheval sur le règlement.',
-    av: { sex: 'm', skin: 4, eyes: 0, hair: 'court', hairColor: 0, beard: 'mustache', build: 55, muscle: 40, outfit: 'polo', acc: ['whistle'], ears: 'chou' },
+    grad: 'linear-gradient(135deg,#2d5bff,#8a5cff)',
     hello: 'Bom dia ! Moi c’est Paulo, arbitre IBJJF. Demande-moi tout : points, durée, pesée, ta catégorie, ce qui t’est interdit à ta ceinture.',
   },
   adcc: {
     name: 'Sami', line: 'Direct. Ici, on cherche la soumission.',
-    av: { sex: 'm', skin: 3, eyes: 5, hair: 'chauve', hairColor: 0, beard: 'full', build: 68, muscle: 85, outfit: 'tee', rash: 0, acc: ['whistle'], ears: 'chou' },
+    grad: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)',
     hello: 'Salut, Sami, arbitre ADCC. Chez moi pas de points au début et je punis ceux qui tirent la garde. Vas-y, pose ta question.',
   },
   ajp: {
     name: 'Leïla', line: 'Calme, elle va droit au but.',
-    av: { sex: 'f', skin: 2, eyes: 1, hair: 'chignon', hairColor: 0, beard: 'none', build: 35, muscle: 45, outfit: 'polo', acc: ['headset'] },
+    grad: 'linear-gradient(135deg,#1fbf8f,#2d7dff)',
     hello: 'Bonjour, je suis Leïla, arbitre AJP. Grand Slam, World Pro : pas d’avantages chez nous, chaque action vaut un point. Je t’écoute.',
   },
   naga: {
     name: 'Mike', line: 'Sympa, il connaît chaque niveau par cœur.',
-    av: { sex: 'm', skin: 0, eyes: 3, hair: 'boucle', hairColor: 5, beard: 'stubble', build: 50, muscle: 45, outfit: 'striped', acc: ['whistle'] },
+    grad: 'linear-gradient(135deg,#ff4fa3,#c04dff)',
     hello: 'Hey ! Mike, arbitre NAGA. Gi, No-Gi, débutant ou expert : dis-moi ce que tu veux savoir.',
   },
   gi: {
     name: 'Jess', line: 'Organisée, la reine des poules.',
-    av: { sex: 'f', skin: 1, eyes: 2, hair: 'carre', hairColor: 4, beard: 'none', build: 40, muscle: 40, outfit: 'hoodie', acc: ['whistle', 'glasses'] },
+    grad: 'linear-gradient(135deg,#ffb23d,#ff6a3d)',
     hello: 'Salut, c’est Jess, arbitre Grappling Industries. Ici tu combats en poule, plusieurs combats garantis. Une question ?',
   },
 };

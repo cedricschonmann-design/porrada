@@ -4,11 +4,11 @@ import { state, save, profile } from '../store.js';
 import { h, fill, ICON, push, seg, belt, BELT_NAME, AGE_NAME, sfx, haptic } from '../ui.js';
 import { REFEREES, QUICK, VERIFIED } from '../data/referees.js';
 import { CHARS, reply, topicReply } from '../data/refbrain.js';
-import { avatarOf } from '../people.js';
+import { refBadge } from '../people.js';
 import { header } from '../app.js';
 import { openSettings } from './settings.js';
 
-const refPerson = (r) => ({ name: CHARS[r.id].name, av: CHARS[r.id].av });
+const badge = (r, size) => refBadge(CHARS[r.id].name, CHARS[r.id].grad, size);
 
 export function render() {
   const me = state.me;
@@ -30,7 +30,7 @@ export function render() {
       const c = CHARS[r.id];
       const wide = i === refs.length - 1 && refs.length % 2 === 1;
       return h('button', { class: 'refcard' + (wide ? ' wide' : ''), 'data-ref': r.id, onclick: () => openReferee(r) },
-        avatarOf(refPerson(r), { size: wide ? 72 : 84 }),
+        badge(r, wide ? 64 : 72),
         h('div', { style: wide ? null : { display: 'contents' } },
           h('span', { class: 'fed' }, r.short),
           h('div', { class: 'nm' }, c.name),
@@ -66,14 +66,14 @@ function openReferee(r) {
     const row = (m, animate) => {
       const el = m.who === 'me'
         ? h('div', { class: 'msg-row me' }, h('div', { class: 'bubble' }, m.text))
-        : h('div', { class: 'msg-row them' }, avatarOf(refPerson(r), { size: 30 }), m.res ? bubble(m.res) : h('div', { class: 'bubble' }, m.text));
+        : h('div', { class: 'msg-row them' }, badge(r, 30), m.res ? bubble(m.res) : h('div', { class: 'bubble' }, m.text));
       if (!animate) el.style.animation = 'none';
       return el;
     };
     const drawAll = () => {
       fill(chat,
         h('div', { style: { display: 'grid', justifyItems: 'center', gap: '6px', textAlign: 'center', margin: '4px 0 12px' } },
-          avatarOf(refPerson(r), { size: 96, ring: true }),
+          badge(r, 88),
           h('h2', null, c.name),
           h('div', { class: 'muted small' }, `Arbitre ${r.short} · ${r.full}`),
           h('div', { class: 'ctx', style: { justifyContent: 'center', marginTop: '6px' } },
@@ -81,7 +81,7 @@ function openReferee(r) {
             h('span', { class: 'tag' }, AGE_NAME[profile().age].split(' (')[0]),
             profile().weight ? h('span', { class: 'tag' }, `${String(profile().weight).replace('.', ',')} kg`) : null),
         ),
-        h('div', { class: 'msg-row them' }, avatarOf(refPerson(r), { size: 30 }), h('div', { class: 'bubble' }, c.hello)),
+        h('div', { class: 'msg-row them' }, badge(r, 30), h('div', { class: 'bubble' }, c.hello)),
         log.map((m) => row(m, false)),
       );
     };
@@ -102,7 +102,7 @@ function openReferee(r) {
         chat.append(row(m, true));
         sfx('send');
       }
-      const typing = h('div', { class: 'msg-row them' }, avatarOf(refPerson(r), { size: 30 }), h('div', { class: 'bubble typing' }, h('i'), h('i'), h('i')));
+      const typing = h('div', { class: 'msg-row them' }, badge(r, 30), h('div', { class: 'bubble typing' }, h('i'), h('i'), h('i')));
       chat.append(typing);
       scrollEnd();
       setTimeout(() => {

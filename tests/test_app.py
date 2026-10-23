@@ -56,7 +56,7 @@ def onboard(pg, email, name, year, belt_label, weight=None, shots=None):
     if shots:
         shot(pg, shots + '-03-pratique')
     pg.click('#onb-next')
-    pg.wait_for_selector('#onb-avatar')
+    pg.wait_for_selector('#onb-photo')
 
 
 def finish_onboarding(pg, shots=None):
@@ -152,18 +152,9 @@ def main():
             a = ctx_a.new_page()
             watch(a, 'A', errors)
             onboard(a, 'cedric@exemple.ch', 'Cédric', '2005', 'Violette', '78', shots='A')
-            shot(a, 'A-04-photo-ou-avatar')
-            a.click('#onb-avatar')
-            a.wait_for_selector('#av-save')
-            a.locator('.range').first.fill('80')
-            a.locator('.ctabs button', has_text='Visage').click()
-            a.locator('.seg button', has_text='En chou-fleur').click()
-            a.locator('.ctabs button', has_text='Tenue').click()
-            shot(a, 'A-05-avatar-tenue')
-            a.click('#av-save')
-            a.wait_for_timeout(600)
+            shot(a, 'A-04-photo')
             finish_onboarding(a, shots='A')
-            check('Inscription complète (e-mail, nom d’utilisateur, avatar)', a.evaluate('window.__porrada.state.me.username') == 'cedric' and a.evaluate('window.__porrada.state.me.av.build') == 80)
+            check('Inscription complète (e-mail, nom d’utilisateur)', a.evaluate('window.__porrada.state.me.username') == 'cedric' and a.evaluate('window.__porrada.state.me.email') == 'cedric@exemple.ch')
             shot(a, 'A-07-mon-jeu')
 
             do_quiz(a, 'A-08')

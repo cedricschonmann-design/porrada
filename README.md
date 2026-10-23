@@ -16,13 +16,12 @@ L'icône PORRADA apparaît comme une vraie appli. Elle marche sans internet et s
 
 | Partie | Ce qu'on y fait |
 |---|---|
-| **Inscription** | E-mail, nom d'utilisateur, prénom, année de naissance, catégorie, ceinture et barrettes, académie, poids, puis photo ou avatar. |
-| **Avatar** | Personnage dessiné qui change en direct : sexe, peau, yeux, cheveux, barbe, oreilles en chou-fleur, curseurs corpulence et muscles, kimono ou rashguard et short, couleurs, patchs, doigts strappés. |
+| **Inscription** | E-mail, nom d'utilisateur, prénom, année de naissance, catégorie, ceinture et barrettes, académie, poids, photo de profil (sinon les initiales). |
 | **Mon jeu** | Questionnaire à choix (avec « Autre »), dont les questions s'adaptent aux réponses → stratégie : style, arbre de jeu, debout, plan A, finitions (avec les interdits de ton règlement), « s'il fait ça, tu fais ça », plan B, défense, clés de jambe, zones à ménager, plan sur 4 semaines. Versions gardées. |
 | **Amis** | Ajout par QR code, messages chiffrés (réponses rapides, accusé de réception), défi (durée, Gi / No-Gi), compte à rebours commun, chrono en anneau, résultat (points / soumission avec recherche Kimono / Grappling / match nul), revanche, score « 2 – 0 » et palmarès. |
 | **Journal** | Privé. Mode cours : deux gros boutons, minuteur de rounds avec repos et sonnerie, ressenti, partenaires, notes. Graphique des soumissions placées et subies, régularité sur 12 semaines, objectif par semaine, tes armes et ce qui te piège. |
-| **Compét.** | Cinq arbitres personnages (IBJJF, ADCC, AJP, NAGA, Grappling Industries) à qui on écrit : points, valeur d'une position, durée, pesée, catégorie de poids, tenue, égalité, pénalités, situations (tirer la garde, slam…), techniques autorisées selon ta ceinture et ton âge. |
-| **Réglages** | Roue dentée : compte, pratique (ceinture et promotions, académie, poids, objectif), avatar et photo, thème, sons, vibrations, sauvegarde, suppression du compte. |
+| **Compét.** | Cinq arbitres (Paulo, Sami, Leïla, Mike, Jess : IBJJF, ADCC, AJP, NAGA, Grappling Industries) à qui on écrit : points, valeur d'une position, durée, pesée, catégorie de poids, tenue, égalité, pénalités, situations (tirer la garde, slam…), techniques autorisées selon ta ceinture et ton âge. |
+| **Réglages** | Roue dentée : compte, pratique (ceinture et promotions, académie, poids, objectif), photo de profil, thème, sons, vibrations, sauvegarde, suppression du compte. |
 
 ## Comment ça marche (sans serveur à payer)
 
@@ -50,8 +49,7 @@ app/                      ← l'appli publiée (aucune étape de compilation)
     app.js                ← démarrage, navigation, onglets
     store.js              ← données enregistrées sur le téléphone
     net.js                ← relais en direct (MQTT) + chiffrement + codes QR
-    avatar.js             ← dessin des avatars (corps, visage, tenue)
-    people.js             ← photo ou avatar d'une personne
+    people.js             ← photo de profil ou initiales
     qr.js                 ← affichage et lecture des QR codes (caméra)
     ui.js                 ← boutons, feuilles, sons, écran allumé
     version.js            ← numéro de version (rempli à la publication)
@@ -83,7 +81,7 @@ Chaque envoi sur la branche `main` republie l'appli en 1 à 2 minutes. Les tél�
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 tests/test_app.py /tmp/captures
 ```
 
-Le test lance un serveur local et un petit relais de test (`tests/mqtt_broker.py`), puis simule deux iPhone : inscription et avatar, questionnaire, ajout d'ami par la caméra, messages, combat complet, journal, arbitres, réglages, et l'appli sans internet.
+Le test lance un serveur local et un petit relais de test (`tests/mqtt_broker.py`), puis simule deux iPhone : inscription, questionnaire, ajout d'ami par la caméra, messages, combat complet, journal, arbitres, réglages, et l'appli sans internet.
 
 ## Limites connues
 

@@ -4,7 +4,7 @@ import { state, save, upsertFriend, headToHead, myCard } from '../store.js';
 import { h, fill, ICON, push, sheet, toast, belt, day, ask, sfx, haptic, norm, plural } from '../ui.js';
 import { onMessage, send, toCode, stamped } from '../net.js';
 import { qrSvg } from '../qr.js';
-import { avatarOf, fullBody, squareJpeg } from '../people.js';
+import { avatarOf, squareJpeg } from '../people.js';
 import { subName } from '../data/submissions.js';
 import { header, scanAny } from '../app.js';
 import { showMyCode, live } from './settings.js';
@@ -96,7 +96,7 @@ export function openFriend(id) {
       const s = headToHead(id);
       fill(wrap,
         h('div', { class: 'profile-hero' },
-          f.pic === 'photo' && f.photo ? avatarOf(f, { size: 140, ring: true }) : f.av ? fullBody(f) : avatarOf(f, { size: 120, ring: true }),
+          avatarOf(f, { size: 128, ring: true }),
           h('h2', null, f.name),
           f.username ? h('div', { class: 'handle' }, '@' + f.username) : null,
           h('div', { style: { marginTop: '4px' } }, belt(f.belt, f.stripes, true)),
@@ -199,7 +199,7 @@ function fightRow(fi, otherName) {
 
 // ---------- Messages réseau : cartes d'ami, photos ----------
 async function sendMyPhoto(id) {
-  if (state.me.pic !== 'photo' || !state.me.photo) return;
+  if (!state.me.photo) return;
   try { send(id, { t: 'photo', data: await squareJpeg(state.me.photo, 128) }); } catch (e) { /* tant pis */ }
 }
 
@@ -233,7 +233,6 @@ onMessage(async (msg) => {
     const d = String(msg.data || '');
     if (/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(d) && d.length < 80000) {
       state.friends[msg.from].photo = d;
-      state.friends[msg.from].pic = 'photo';
       save();
     }
   }

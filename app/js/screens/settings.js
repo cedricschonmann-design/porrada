@@ -4,8 +4,7 @@ import { state, save, onChange, myCard, exportData, importData, wipe, ageCategor
 import { h, fill, ICON, push, sheet, toast, seg, toggle, belt, BELTS, BELT_NAME, AGE_NAME, ask, sfx, haptic, confetti, copyText, since, countUp } from '../ui.js';
 import { toCode, netStatus, stamped, send } from '../net.js';
 import { qrSvg } from '../qr.js';
-import { avatarOf, fullBody, pickPhoto, squareJpeg } from '../people.js';
-import { openAvatarEditor } from './avatar-editor.js';
+import { avatarOf, pickPhoto, squareJpeg } from '../people.js';
 import { REFEREES } from '../data/referees.js';
 import { BUILD } from '../version.js';
 
@@ -23,7 +22,7 @@ export function broadcastProfile({ photo = false } = {}) {
   bcTimer = setTimeout(async () => {
     const card = myCard();
     let thumb = null;
-    if (photo && state.me.pic === 'photo' && state.me.photo) {
+    if (photo && state.me.photo) {
       try { thumb = await squareJpeg(state.me.photo, 128); } catch (e) { thumb = null; }
     }
     for (const id of Object.keys(state.friends)) {
@@ -31,6 +30,26 @@ export function broadcastProfile({ photo = false } = {}) {
       if (thumb) send(id, { t: 'photo', data: thumb });
     }
   }, 800);
+}
+
+// ---------- Photo de profil ----------
+export function editPhoto() {
+  const me = state.me;
+  const pick = async () => {
+    const url = await pickPhoto();
+    if (!url) return;
+    me.photo = url;
+    save();
+    broadcastProfile({ photo: true });
+    toast('Photo enregistrée.', { ok: true, sound: 'success' });
+  };
+  if (!me.photo) { pick(); return; }
+  sheet((close) => h('div', { class: 'stack', style: { textAlign: 'center' } },
+    h('div', { style: { display: 'grid', justifyItems: 'center' } }, avatarOf(me, { size: 120, ring: true })),
+    h('h2', null, 'Photo de profil'),
+    h('button', { class: 'btn primary lg block', onclick: () => { close(); pick(); } }, h('span', { html: ICON.camera, style: { display: 'contents' } }), 'Choisir une autre photo'),
+    h('button', { class: 'btn danger block', onclick: () => { me.photo = null; save(); broadcastProfile(); close(); sfx('del'); toast('Photo retirée.'); } }, 'Retirer la photo'),
+  ));
 }
 
 // ---------- Mon code ami ----------
@@ -166,15 +185,7 @@ export function openSettings() {
 
         h('div', { class: 'group-title' }, 'Apparence'),
         h('div', { class: 'group' },
-          item({ ic: 'sparkles', c: 'c2', t: 'Mon avatar', s: 'Corps, cheveux, kimono, patchs…', onclick: () => openAvatarEditor(me.av, { belt: me.belt, stripes: me.stripes, onSave: (av) => { me.av = av; if (me.pic !== 'photo') broadcastProfile(); save(); toast('Avatar enregistré.', { ok: true }); } }) }),
-          item({
-            ic: 'camera', c: 'c5', t: 'Photo de profil', v: me.pic === 'photo' ? 'Photo' : 'Avatar', onclick: () => choose('Photo de profil', [['photo', me.photo ? 'Ma photo' : 'Choisir une photo'], ['new', 'Choisir une autre photo'], ['avatar', 'Mon avatar']].filter((x) => !(x[0] === 'new' && !me.photo)), me.pic, async (v) => {
-              if (v === 'avatar') { me.pic = 'avatar'; save(); broadcastProfile(); return; }
-              if (v === 'photo' && me.photo) { me.pic = 'photo'; save(); broadcastProfile({ photo: true }); return; }
-              const url = await pickPhoto();
-              if (url) { me.photo = url; me.pic = 'photo'; save(); broadcastProfile({ photo: true }); toast('Photo enregistrée.', { ok: true }); }
-            }),
-          }),
+          item({ ic: 'camera', c: 'c5', t: 'Photo de profil', v: me.photo ? 'Changer' : 'Ajouter', onclick: () => editPhoto() }),
           item({ ic: 'moon', c: 'c7', t: 'Thème', right: seg([['auto', 'Auto'], ['dark', 'Sombre'], ['light', 'Clair']], s.theme || 'auto', (v) => { s.theme = v; save(); }, { cls: 'sm' }) }),
           item({ ic: 'motion', c: 'c4', t: 'Réduire les animations', right: toggle(!!s.reduceMotion, (v) => { s.reduceMotion = v; save(); }, 'Réduire les animations') }),
         ),
@@ -276,7 +287,7 @@ function howItWorks() {
 function privacy() {
   info('Confidentialité', [
     'Ton e-mail, ton année de naissance et ton poids ne quittent jamais ton téléphone.',
-    'Tes amis reçoivent seulement : ton prénom, ton nom d’utilisateur, ta ceinture, ton académie et ton avatar (ou ta photo, si tu l’as choisie).',
+    'Tes amis reçoivent seulement : ton prénom, ton nom d’utilisateur, ta ceinture, ton académie et ta photo de profil, si tu en as mis une.',
     'Ton journal est privé : personne d’autre ne le voit.',
   ]);
 }
@@ -310,14 +321,14 @@ export function openMyProfile() {
       const stat = (v, k) => { const el = h('div', { class: 'v' }, '0'); countUp(el, v); return h('div', { class: 'stat' }, el, h('div', { class: 'k' }, k)); };
       fill(wrap,
         h('div', { class: 'profile-hero' },
-          me.pic === 'photo' && me.photo ? avatarOf(me, { size: 140, ring: true }) : fullBody(me),
+          h('div', { class: 'photo-pick' }, avatarOf(me, { size: 132, ring: true, onclick: () => editPhoto(), label: 'Changer ma photo' }), h('span', { class: 'iconbtn grad edit', html: ICON.camera, 'aria-hidden': 'true' })),
           h('h2', null, me.name),
           h('div', { class: 'handle' }, '@' + (me.username || '')),
           h('div', { class: 'hstack', style: { marginTop: '4px' } }, belt(me.belt, me.stripes, true)),
           h('div', { class: 'muted small' }, `${BELT_NAME[me.belt]} depuis ${since(me.beltSince || me.createdAt)}${me.academy ? ' · ' + me.academy : ''}`),
         ),
         h('div', { class: 'btns two', style: { margin: '16px 0' } },
-          h('button', { class: 'btn', onclick: () => openAvatarEditor(me.av, { belt: me.belt, stripes: me.stripes, onSave: (av) => { me.av = av; me.pic = 'avatar'; save(); broadcastProfile(); draw(); } }) }, h('span', { html: ICON.sparkles, style: { display: 'contents' } }), 'Avatar'),
+          h('button', { class: 'btn', onclick: () => editPhoto() }, h('span', { html: ICON.camera, style: { display: 'contents' } }), 'Ma photo'),
           h('button', { class: 'btn', onclick: showMyCode }, h('span', { html: ICON.qr, style: { display: 'contents' } }), 'Mon code'),
         ),
         h('div', { class: 'stats' },

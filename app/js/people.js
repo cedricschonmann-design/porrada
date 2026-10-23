@@ -1,22 +1,33 @@
-// Affichage d'une personne : photo, avatar dessiné, ou initiales.
+// Affichage d'une personne : sa photo de profil, sinon ses initiales sur un dégradé.
 
-import { h, initials } from './ui.js';
-import { avatarSvg } from './avatar.js';
+import { h, initials, ICON } from './ui.js';
 
-// person : { name, av, photo, pic, belt, stripes }
+const GRADS = [
+  'linear-gradient(135deg,#8a5cff,#ff4fa3)',
+  'linear-gradient(135deg,#ff8a3d,#ff4f6d)',
+  'linear-gradient(135deg,#1fbf8f,#2d7dff)',
+  'linear-gradient(135deg,#c04dff,#5b35d6)',
+  'linear-gradient(135deg,#ffb23d,#ff6a3d)',
+  'linear-gradient(135deg,#2d5bff,#8a5cff)',
+];
+function gradFor(key) {
+  let n = 0;
+  for (const c of String(key || '?')) n = (n * 31 + c.charCodeAt(0)) >>> 0;
+  return GRADS[n % GRADS.length];
+}
+
+// person : { id, name, photo }
 export function avatarOf(person, { size = 44, ring = false, dot = null, onclick = null, label = null } = {}) {
   const p = person || {};
   const tag = onclick ? 'button' : 'span';
   const el = h(tag, { class: 'av' + (ring ? ' ring' : ''), onclick, 'aria-label': label || (onclick ? p.name : null), type: onclick ? 'button' : null });
   el.style.setProperty('--s', size + 'px');
   const clip = h('span', { class: 'clip' });
-  if (p.photo && p.pic === 'photo') {
+  if (p.photo) {
     clip.append(h('img', { src: p.photo, alt: '' }));
-  } else if (p.av) {
-    clip.innerHTML = avatarSvg(p.av, { mode: 'bust', belt: p.belt, stripes: p.stripes });
   } else {
-    clip.style.display = 'grid';
-    clip.style.placeItems = 'center';
+    clip.classList.add('ini');
+    clip.style.background = gradFor(p.id || p.name);
     clip.textContent = initials(p.name);
   }
   el.append(clip);
@@ -24,13 +35,14 @@ export function avatarOf(person, { size = 44, ring = false, dot = null, onclick 
   return el;
 }
 
-export function fullBody(person, cls = 'fullbody') {
-  const p = person || {};
-  const wrap = h('div', { style: { display: 'contents' } });
-  wrap.innerHTML = avatarSvg(p.av, { mode: 'full', belt: p.belt, stripes: p.stripes });
-  const svg = wrap.firstElementChild;
-  svg.setAttribute('class', cls);
-  return svg;
+// Pastille d'un arbitre : son initiale sur un dégradé, avec un petit sifflet.
+export function refBadge(name, grad, size = 44) {
+  const el = h('span', { class: 'av refav', 'aria-hidden': 'true' });
+  el.style.setProperty('--s', size + 'px');
+  const clip = h('span', { class: 'clip ini' }, initials(name));
+  clip.style.background = grad;
+  el.append(clip, h('span', { class: 'whistle', html: ICON.whistle }));
+  return el;
 }
 
 // Choisir une photo (galerie ou appareil) : recadrée en carré, compressée.

@@ -1,10 +1,8 @@
-// Inscription : bienvenue, compte, toi, ta pratique, ta photo ou ton avatar, c'est parti.
+// Inscription : bienvenue, compte, toi, ta pratique, ta photo, c'est parti.
 
 import { state, save, createMe, importData } from '../store.js';
 import { h, fill, ICON, seg, toast, sfx, haptic, belt, BELTS, confetti } from '../ui.js';
-import { avatarOf, fullBody, pickPhoto } from '../people.js';
-import { defaultFor } from '../avatar.js';
-import { openAvatarEditor } from './avatar-editor.js';
+import { avatarOf, pickPhoto } from '../people.js';
 
 export const LOGO = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><g transform="translate(0 6)" fill="#fff">
 <path class="fillin" fill-rule="evenodd" d="M512 232c-172 0-302 78-302 176s130 176 302 176 302-78 302-176-130-176-302-176zm0 64c-118 0-206 40-206 90s88 90 206 90 206-40 206-90-88-90-206-90z"/>
@@ -28,9 +26,7 @@ export function startOnboarding(onDone) {
     stripes: (prev && prev.stripes) || 0,
     academy: (prev && prev.academy) || '',
     weight: (prev && prev.weight) || '',
-    av: (prev && prev.av) || null,
     photo: (prev && prev.photo) || null,
-    pic: (prev && prev.pic) || 'avatar',
   };
   let step = prev ? 1 : 0;
   let dir = 1;
@@ -118,7 +114,7 @@ export function startOnboarding(onDone) {
         h('p', { class: 'muted' }, 'Ton âge et ta catégorie servent aux arbitres : durée des combats, pesée, ce qui t’est interdit.'),
         field('Prénom', name),
         field('Année de naissance', year),
-        h('div', { class: 'field' }, h('span', null, 'Tu combats chez les'), seg([['m', 'Hommes'], ['f', 'Femmes']], d.sex, (v) => { d.sex = v; if (!d.avTouched) d.av = null; })),
+        h('div', { class: 'field' }, h('span', null, 'Tu combats chez les'), seg([['m', 'Hommes'], ['f', 'Femmes']], d.sex, (v) => { d.sex = v; })),
       );
       foot.append(h('button', {
         class: 'btn primary lg block', id: 'onb-next', onclick: () => {
@@ -159,42 +155,28 @@ export function startOnboarding(onDone) {
     }
 
     if (step === 4) {
-      if (!d.av) d.av = defaultFor(d.sex);
-      const person = () => ({ name: d.name, av: d.av, photo: d.photo, pic: d.pic, belt: d.belt, stripes: d.stripes });
-      const preview = h('div', { class: 'photo-pick' }, avatarOf(person(), { size: 132, ring: true }));
-      const choose = (pic) => { d.pic = pic; draw(); };
+      const person = { id: prev && prev.id, name: d.name, photo: d.photo };
+      const pick = async () => { const url = await pickPhoto(); if (url) { d.photo = url; sfx('success'); haptic('medium'); draw(); } };
       body.append(
-        h('h1', null, 'Ta tête sur le tapis'),
-        h('p', { class: 'muted' }, 'Crée ton avatar de combattant, ou mets une photo. Tu pourras changer plus tard.'),
-        preview,
-        h('div', { class: 'choice-grid' },
-          h('button', {
-            class: 'choice', id: 'onb-avatar', 'aria-pressed': String(d.pic === 'avatar'), onclick: () => {
-              openAvatarEditor(d.av, { belt: d.belt, stripes: d.stripes, onSave: (av) => { d.av = av; d.avTouched = true; d.pic = 'avatar'; draw(); } });
-            },
-          }, h('span', { class: 'ico', html: ICON.sparkles }), 'Créer mon avatar', h('span', { class: 'd' }, 'Kimono, rashguard, cheveux…')),
-          h('button', {
-            class: 'choice', 'aria-pressed': String(d.pic === 'photo'), onclick: async () => {
-              const url = await pickPhoto();
-              if (url) { d.photo = url; choose('photo'); sfx('success'); }
-            },
-          }, h('span', { class: 'ico', html: ICON.camera }), 'Mettre une photo', h('span', { class: 'd' }, 'Depuis ta galerie')),
-        ),
+        h('h1', null, 'Ta photo de profil'),
+        h('p', { class: 'muted' }, 'Tes amis la voient sur ton profil, dans vos messages et pendant vos combats.'),
+        h('div', { class: 'photo-pick', style: { margin: '10px auto' } },
+          avatarOf(person, { size: 132, ring: true, onclick: pick, label: 'Choisir une photo' }),
+          h('span', { class: 'iconbtn grad edit', html: ICON.camera, 'aria-hidden': 'true' })),
+        h('button', { class: 'btn lg block', id: 'onb-photo', onclick: pick }, h('span', { html: ICON.image, style: { display: 'contents' } }), d.photo ? 'Choisir une autre photo' : 'Choisir une photo'),
       );
-      foot.append(h('button', { class: 'btn primary lg block', id: 'onb-next', onclick: () => finish() }, 'Terminer'));
+      foot.append(h('button', { class: 'btn primary lg block', id: 'onb-next', onclick: () => finish() }, d.photo ? 'Terminer' : 'Plus tard'));
     }
 
     if (step === 5) {
       const me = state.me;
       body.append(
         h('div', { style: { display: 'grid', justifyItems: 'center', gap: '10px', textAlign: 'center' } },
-          me.pic === 'photo' && me.photo ? avatarOf(me, { size: 150, ring: true }) : fullBody(me, 'fullbody'),
+          h('div', { style: { animation: 'pop .6s var(--spring) both' } }, avatarOf(me, { size: 150, ring: true })),
           h('h1', null, `Bienvenue, ${me.name}`),
           h('p', { class: 'muted', style: { maxWidth: '300px' } }, 'Commence par construire ton jeu, ou ajoute tes partenaires pour les défier.'),
         ),
       );
-      const fb = body.querySelector('.fullbody');
-      if (fb) { fb.style.height = '250px'; fb.style.width = 'auto'; fb.classList.add('bounce'); }
       foot.append(h('button', { class: 'btn primary lg block', id: 'onb-done', onclick: () => { el.remove(); onDone(); } }, 'Entrer sur le tapis'));
       setTimeout(() => { confetti(); sfx('win'); haptic('heavy'); }, 250);
     }
@@ -203,8 +185,8 @@ export function startOnboarding(onDone) {
   function finish() {
     const data = {
       email: d.email, username: d.username, name: d.name, birthYear: d.birthYear, sex: d.sex,
-      belt: d.belt, stripes: d.stripes, academy: d.academy, weight: d.weight, av: d.av || defaultFor(d.sex),
-      photo: d.pic === 'photo' ? d.photo : null, pic: d.pic === 'photo' && d.photo ? 'photo' : 'avatar', onboarded: true,
+      belt: d.belt, stripes: d.stripes, academy: d.academy, weight: d.weight,
+      photo: d.photo || null, onboarded: true,
     };
     if (prev) {
       Object.assign(state.me, data);
