@@ -1,7 +1,7 @@
 // Combats entre amis : invitation, compte à rebours commun, chrono du round, résultat.
 
 import { state, save, rid, fightById, friendName } from '../store.js';
-import { h, ICON, sheet, full, toast, seg, mmss, SPEED, beep, buzzer, keepAwake, unlockAudio, norm, ask, plural } from '../ui.js';
+import { h, ICON, sheet, full, toast, seg, mmss, SPEED, beep, buzzer, keepAwake, unlockAudio, norm, ask, plural, fill } from '../ui.js';
 import { onMessage, send, toCode, isOnline } from '../net.js';
 import { qrSvg } from '../qr.js';
 import { subsFor, KIND_LABEL, subName, SUB_BY_ID } from '../data/submissions.js';
@@ -56,7 +56,7 @@ function showWaiting(fight, code, live) {
   let qrShown = !live;
   const close = sheet((closeIt) => {
     const wrap = h('div', { class: 'stack', id: 'waiting' });
-    const draw = () => wrap.replaceChildren(
+    const draw = () => fill(wrap, 
       h('h2', null, live ? `Invitation envoyée à ${name}` : `Fais scanner ce code par ${name}`),
       h('p', { class: 'muted' }, `Round de ${plural(fight.minutes, 'minute', 'minutes')}, en ${modeLabel(fight.mode)}. ${live ? 'Dès qu’il accepte sur son téléphone, le compte à rebours démarre chez vous deux.' : 'Pas de réseau : il scanne ce code avec PORRADA (Amis › Scanner).'}`),
       qrShown ? qrSvg(code) : h('div', { style: { display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 0' } }, h('div', { class: 'spinner' }), h('b', null, 'En attente de sa réponse…')),
@@ -203,19 +203,19 @@ export function openBoard(fid, qrCode = null) {
     };
 
     const draw = () => {
-      bottom.replaceChildren();
+      fill(bottom, );
       if (phase === 'pre') {
-        center.replaceChildren(h('div', { style: { display: 'grid', gap: '14px', justifyItems: 'center', width: '100%' } },
+        fill(center, h('div', { style: { display: 'grid', gap: '14px', justifyItems: 'center', width: '100%' } },
           qrCode ? qrSvg(qrCode) : null,
           h('div', { class: 'label' }, qrCode ? `Fais scanner ce code par ${oppName}` : 'Prêts ?'),
           h('div', { class: 'muted' }, 'Le compte à rebours démarre dans ', h('b', { 'data-pre': '' }, '')),
         ));
         bottom.append(cancelBtn());
       } else if (phase === 'count') {
-        center.replaceChildren(h('div', null, h('div', { class: 'giant count' }, '10'), h('div', { class: 'label' }, 'Prêts ?')));
+        fill(center, h('div', null, h('div', { class: 'giant count' }, '10'), h('div', { class: 'label' }, 'Prêts ?')));
         bottom.append(cancelBtn());
       } else if (phase === 'round') {
-        center.replaceChildren(h('div', { style: { width: '100%' } },
+        fill(center, h('div', { style: { width: '100%' } },
           h('div', { class: 'giant clock' }, mmss(roundMs(fight) * SPEED)),
           h('div', { class: 'progress' }, h('i', { style: { width: '0%' } })),
         ));
@@ -249,24 +249,24 @@ export function openBoard(fid, qrCode = null) {
     const drawResult = () => {
       const pickBtn = (label, onclick, primary) => h('button', { class: 'btn block big' + (primary ? ' primary' : ''), onclick }, label);
       if (step.s === 'winner') {
-        center.replaceChildren(h('div', { class: 'pick', style: { width: '100%' } },
+        fill(center, h('div', { class: 'pick', style: { width: '100%' } },
           h('h2', { style: { marginBottom: '8px' } }, 'Qui a gagné ?'),
           pickBtn(state.me.name, () => { step = { s: 'how', winner: state.me.id }; draw(); }, true),
           pickBtn(oppName, () => { step = { s: 'how', winner: oppId }; draw(); }, true),
           pickBtn('Match nul', () => { step = { s: 'confirm', winner: null, method: 'draw' }; draw(); }),
         ));
       } else if (step.s === 'how') {
-        center.replaceChildren(h('div', { class: 'pick', style: { width: '100%' } },
+        fill(center, h('div', { class: 'pick', style: { width: '100%' } },
           h('h2', { style: { marginBottom: '8px' } }, `${step.winner === state.me.id ? 'Tu as' : oppName + ' a'} gagné comment ?`),
           pickBtn('Aux points', () => { step = { ...step, s: 'confirm', method: 'points' }; draw(); }, true),
           pickBtn('Par soumission', () => { step = { ...step, s: 'sub', method: 'submission' }; draw(); }, true),
           h('button', { class: 'btn ghost block', onclick: () => { step = { s: 'winner' }; draw(); } }, 'Retour'),
         ));
       } else if (step.s === 'sub') {
-        center.replaceChildren(subPicker(fight.mode, (id) => { step = { ...step, s: 'confirm', sub: id }; draw(); }, () => { step = { ...step, s: 'how' }; draw(); }));
+        fill(center, subPicker(fight.mode, (id) => { step = { ...step, s: 'confirm', sub: id }; draw(); }, () => { step = { ...step, s: 'how' }; draw(); }));
       } else if (step.s === 'confirm') {
         const preview = { result: { winner: step.winner, method: step.method, sub: step.sub } };
-        center.replaceChildren(h('div', { class: 'pick', style: { width: '100%' } },
+        fill(center, h('div', { class: 'pick', style: { width: '100%' } },
           h('h2', null, 'Résultat'),
           h('p', { class: 'label', style: { margin: '6px 0 14px' } }, sentence(preview, oppName)),
           h('button', { class: 'btn primary block big', id: 'validate', onclick: () => validate() }, 'Valider le résultat'),
@@ -297,7 +297,7 @@ export function openBoard(fid, qrCode = null) {
       const r = fight.result;
       const won = r.winner === state.me.id;
       const big = !r.winner ? 'Match nul' : won ? 'Victoire' : 'Défaite';
-      center.replaceChildren(h('div', { style: { display: 'grid', gap: '12px', justifyItems: 'center', width: '100%' } },
+      fill(center, h('div', { style: { display: 'grid', gap: '12px', justifyItems: 'center', width: '100%' } },
         h('div', { class: 'giant', style: { fontSize: 'min(17vw, 96px)', color: won ? 'var(--accent)' : '#fff' } }, big),
         h('p', { class: 'label', style: { margin: '0' } }, sentence(fight, oppName)),
         byOther ? h('p', { class: 'muted' }, `Résultat enregistré par ${oppName}.`) : null,
@@ -305,7 +305,7 @@ export function openBoard(fid, qrCode = null) {
           h('p', { class: 'muted', style: { textAlign: 'center', margin: '8px 0 0' } }, `Pas de réseau : fais scanner ce code par ${oppName} pour qu’il ait le résultat.`),
           qrSvg(shareCode)) : null,
       ));
-      bottom.replaceChildren(
+      fill(bottom, 
         h('button', { class: 'btn primary block', onclick: () => closeIt() }, 'Terminer'),
         h('button', { class: 'btn ghost block', onclick: () => { step = { s: 'winner' }; correcting = true; phase = 'result'; draw(); } }, 'Corriger le résultat'),
       );
@@ -339,7 +339,7 @@ function subPicker(mode, onPick, onBack, { backLabel = 'Retour', title = 'Quelle
   const input = h('input', { class: 'input', placeholder: 'Chercher une soumission', 'aria-label': 'Chercher une soumission', autocomplete: 'off' });
   const list = h('div', { class: 'list', style: { maxHeight: '44vh', overflowY: 'auto' } });
   const chips = h('div', { class: 'chips' });
-  const drawChips = () => chips.replaceChildren(
+  const drawChips = () => fill(chips, 
     h('button', { class: 'chip', 'aria-pressed': String(filter === 'kimono'), onclick: () => { filter = 'kimono'; drawChips(); drawList(); } }, 'Kimono'),
     h('button', { class: 'chip', 'aria-pressed': String(filter === 'grappling'), onclick: () => { filter = 'grappling'; drawChips(); drawList(); } }, 'Grappling (No-Gi)'),
   );
@@ -348,7 +348,7 @@ function subPicker(mode, onPick, onBack, { backLabel = 'Retour', title = 'Quelle
     const items = subsFor(filter === 'grappling' ? 'nogi' : 'gi')
       .filter((s) => !q || norm(s.name + ' ' + s.alt).includes(q))
       .sort((a, b) => (filter === 'kimono' ? (a.kind === 'kimono' ? -1 : 0) - (b.kind === 'kimono' ? -1 : 0) : 0));
-    list.replaceChildren(...(items.length ? items.map((s) => h('button', { class: 'row', style: { minHeight: '58px' }, onclick: () => onPick(s.id) },
+    fill(list, ...(items.length ? items.map((s) => h('button', { class: 'row', style: { minHeight: '58px' }, onclick: () => onPick(s.id) },
       h('div', { class: 'grow' }, h('div', { class: 'title', style: { fontSize: '17px' } }, s.name), h('div', { class: 'sub' }, s.alt.split(',')[0])),
       h('span', { class: 'tag ' + s.kind }, KIND_LABEL[s.kind]),
     )) : [h('p', { class: 'muted' }, 'Aucune soumission trouvée.')]));

@@ -1,7 +1,7 @@
 // Amis : ajout par QR code, profil d'un ami, score et palmarès.
 
-import { state, save, upsertFriend, headToHead, myCard } from '../store.js';
-import { h, ICON, full, sheet, toast, belt, avatar, icon, day, ask } from '../ui.js';
+import { state, save, upsertFriend, headToHead, myCard, onChange } from '../store.js';
+import { h, ICON, full, sheet, toast, belt, avatar, icon, day, ask, fill } from '../ui.js';
 import { onMessage, send, toCode, stamped } from '../net.js';
 import { qrSvg } from '../qr.js';
 import { subName } from '../data/submissions.js';
@@ -56,7 +56,7 @@ export function openFriend(id) {
       const f = state.friends[id];
       if (!f) { close(); return; }
       const s = headToHead(id);
-      wrap.replaceChildren(
+      fill(wrap, 
         h('div', { class: 'bar-top' },
           h('button', { class: 'iconbtn', 'aria-label': 'Retour', onclick: close, html: ICON.back }),
           h('span'),
@@ -83,7 +83,7 @@ export function openFriend(id) {
       );
     };
     draw();
-    const off = onMessage(() => setTimeout(draw, 50));
+    const off = onChange(() => requestAnimationFrame(draw));
     const obs = new MutationObserver(() => { if (!el.isConnected) { off(); obs.disconnect(); } });
     obs.observe(document.getElementById('layer'), { childList: true });
     return wrap;

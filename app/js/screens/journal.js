@@ -1,7 +1,7 @@
 // Journal privé : séances, soumissions placées et subies, et le mode cours (entre les rounds).
 
 import { state, save, rid } from '../store.js';
-import { h, ICON, sheet, full, toast, seg, hhmmss, mmss, day, hm, plural, keepAwake, unlockAudio, beep, buzzer, ask, SPEED, norm } from '../ui.js';
+import { h, ICON, sheet, full, toast, seg, hhmmss, mmss, day, hm, plural, keepAwake, unlockAudio, beep, buzzer, ask, SPEED, norm, fill } from '../ui.js';
 import { subName, SUB_BY_ID } from '../data/submissions.js';
 import { header } from '../app.js';
 import { subPicker } from './combat.js';
@@ -82,7 +82,7 @@ function openCourse() {
     const roundBox = h('div');
     const draw = () => {
       if (!c()) return;
-      wrap.replaceChildren(
+      fill(wrap, 
         h('div', { class: 'bar-top' },
           h('h2', { class: 'tape small' }, `Cours ${c().mode === 'nogi' ? 'No-Gi' : 'Gi'}`),
           h('button', { class: 'btn small', onclick: () => { close(); } }, 'Réduire'),
@@ -131,14 +131,14 @@ function openCourse() {
     const drawRound = () => {
       const r = c().round;
       if (!r) {
-        roundBox.replaceChildren(h('div', { class: 'card' },
+        fill(roundBox, h('div', { class: 'card' },
           h('b', null, 'Chrono de round'),
           h('div', { class: 'chips', style: { marginTop: '10px' } }, [3, 4, 5, 6, 7, 8, 10].map((m) => h('button', {
             class: 'chip', onclick: () => { unlockAudio(); c().round = { start: Date.now(), min: m }; save(); drawRound(); },
           }, `${m} min`))),
         ));
       } else {
-        roundBox.replaceChildren(h('div', { class: 'card accent', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        fill(roundBox, h('div', { class: 'card accent', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
           h('div', null, h('div', { class: 'small muted' }, `Round de ${r.min} min`), h('div', { class: 'num', id: 'round-left', style: { fontSize: '40px', lineHeight: '1' } }, '')),
           h('button', { class: 'btn small', onclick: () => { c().round = null; save(); drawRound(); } }, 'Stop'),
         ));
@@ -183,7 +183,7 @@ function editSession(id) {
     const draw = () => {
       const d = new Date(s.start);
       const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-      wrap.replaceChildren(
+      fill(wrap, 
         h('div', { class: 'bar-top' },
           h('button', { class: 'iconbtn', 'aria-label': 'Fermer', onclick: close, html: ICON.close }),
           h('h2', { class: 'tape small' }, existing ? 'La séance' : 'Nouvelle séance'),

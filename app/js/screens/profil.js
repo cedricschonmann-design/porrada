@@ -1,7 +1,7 @@
 // Mon profil : identité, ceinture, réglages, sauvegarde.
 
 import { state, save, myCard, exportData, importData } from '../store.js';
-import { h, full, sheet, toast, seg, belt, avatar, BELTS, AGES, icon, copyText, ask } from '../ui.js';
+import { h, full, sheet, toast, seg, belt, avatar, BELTS, AGES, icon, copyText, ask, fill } from '../ui.js';
 import { toCode, netStatus, stamped } from '../net.js';
 import { qrSvg } from '../qr.js';
 import { BUILD } from '../version.js';
@@ -29,7 +29,7 @@ export function openProfile() {
     const draw = () => {
       const name = h('input', { class: 'input', value: me.name, maxlength: '24', 'aria-label': 'Prénom', onchange: (e) => { if (e.target.value.trim()) { me.name = e.target.value.trim(); save(); } } });
       const status = netStatus();
-      wrap.replaceChildren(
+      fill(wrap, 
         h('div', { class: 'bar-top' },
           h('button', { class: 'iconbtn', 'aria-label': 'Fermer', onclick: close, html: icon('close').innerHTML }),
           h('h2', { class: 'tape small' }, 'Mon profil'),

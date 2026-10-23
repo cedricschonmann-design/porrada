@@ -51,11 +51,11 @@ export const SUBMISSIONS = [
   { id: 'monoplata', name: 'Monoplata', alt: 'mono', fam: 'arm', kind: 'both' },
 
   // Jambes
-  { id: 'ankle', name: 'Clé de cheville droite', alt: 'straight ankle lock, footlock, chave de pé', fam: 'leg', kind: 'both', row: 'sfl' },
+  { id: 'ankle', name: 'Clé de cheville droite', alt: 'straight ankle lock, footlock, chave de pé, clé de cheville, clé de pied', fam: 'leg', kind: 'both', row: 'sfl' },
   { id: 'kneebar', name: 'Clé de genou', alt: 'kneebar, chave de joelho', fam: 'leg', kind: 'both', row: 'knee' },
   { id: 'toehold', name: 'Toe hold', alt: "clé d'orteils, clé de pied tordue", fam: 'leg', kind: 'both', row: 'toe' },
   { id: 'calf', name: 'Écrase-mollet', alt: 'calf slicer, calf crusher', fam: 'leg', kind: 'both', row: 'calf' },
-  { id: 'heel-in', name: 'Clé de talon intérieure', alt: 'inside heel hook, heel hook', fam: 'leg', kind: 'grappling', row: 'heel' },
+  { id: 'heel-in', name: 'Clé de talon intérieure', alt: 'inside heel hook, heel hook, clé de talon, talon', fam: 'leg', kind: 'grappling', row: 'heel' },
   { id: 'heel-out', name: 'Clé de talon extérieure', alt: 'outside heel hook, heel hook', fam: 'leg', kind: 'grappling', row: 'heel' },
   { id: 'banana', name: 'Banana split', alt: 'grand écart', fam: 'leg', kind: 'both', row: 'stretch' },
   { id: 'electric', name: 'Chaise électrique', alt: 'electric chair', fam: 'leg', kind: 'both', row: 'stretch' },

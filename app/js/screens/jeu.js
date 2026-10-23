@@ -1,7 +1,7 @@
 // Mon jeu : le questionnaire (QCM avec « Autre ») et la fiche de stratégie.
 
 import { state, save } from '../store.js';
-import { h, ICON, full, toast, day } from '../ui.js';
+import { h, ICON, full, toast, day, fill } from '../ui.js';
 import { QUESTIONS, buildPlan } from '../data/questionnaire.js';
 import { REF_BY_ID } from '../data/referees.js';
 import { header } from '../app.js';
@@ -105,7 +105,7 @@ function quiz(prev) {
       const otherInput = h('textarea', { class: 'input', placeholder: 'Écris ta réponse', maxlength: '160', 'aria-label': 'Autre réponse', oninput: (e) => { a.other = e.target.value; nextBtn.disabled = !canNext(); } }, a.other);
       const canNext = () => (many ? a.v.length > 0 : a.v !== null) || a.other.trim() !== '';
       const nextBtn = h('button', { class: 'btn primary block big', id: 'q-next', onclick: next, disabled: !canNext() }, i === QUESTIONS.length - 1 ? 'Voir ma stratégie' : 'Suivant');
-      wrap.replaceChildren(
+      fill(wrap, 
         h('div', { class: 'bar-top' },
           h('button', { class: 'iconbtn', 'aria-label': i ? 'Question précédente' : 'Fermer', onclick: () => { if (i) { i--; draw(); } else close(); }, html: i ? ICON.back : ICON.close }),
           h('b', { class: 'num' }, `${i + 1} / ${QUESTIONS.length}`),
@@ -139,7 +139,7 @@ function quiz(prev) {
     const finish = () => {
       const clean = {};
       for (const [k, v] of Object.entries(answers)) clean[k] = { v: v.v, other: (v.other || '').trim() };
-      wrap.replaceChildren(h('div', { style: { display: 'grid', placeItems: 'center', minHeight: '70vh', gap: '18px', textAlign: 'center' } },
+      fill(wrap, h('div', { style: { display: 'grid', placeItems: 'center', minHeight: '70vh', gap: '18px', textAlign: 'center' } },
         h('div', { class: 'spinner', style: { width: '56px', height: '56px', borderWidth: '6px' } }),
         h('h2', null, 'Analyse de ton jeu…'),
       ));

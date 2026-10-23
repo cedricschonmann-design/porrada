@@ -1,7 +1,7 @@
 // Compét. : un arbitre par fédération. On lui pose ses questions sur les règles.
 
 import { state, save } from '../store.js';
-import { h, ICON, full, seg, belt, BELT_NAME } from '../ui.js';
+import { h, ICON, full, seg, belt, BELT_NAME, fill } from '../ui.js';
 import { REFEREES, QUICK, answer, VERIFIED } from '../data/referees.js';
 import { header } from '../app.js';
 
@@ -36,7 +36,7 @@ function openReferee(r) {
       drawAnswers();
       window.requestAnimationFrame(() => answers.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     };
-    const drawAnswers = () => answers.replaceChildren(...log.map(({ q, res }) => h('div', { class: 'answer' },
+    const drawAnswers = () => fill(answers, ...log.map(({ q, res }) => h('div', { class: 'answer' },
       h('div', { class: 'q' }, q),
       h('h3', null, res.verdict === true ? '✓ ' : res.verdict === false ? '✗ ' : '', res.title),
       res.table ? h('table', null, h('tbody', null, res.table.map(([k, v]) => h('tr', null, h('td', null, k), h('td', null, v))))) : null,

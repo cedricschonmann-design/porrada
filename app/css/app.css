@@ -165,6 +165,7 @@ p { margin: 0 0 10px; }
 .btn svg { width: 24px; height: 24px; flex: none; }
 .btns { display: grid; gap: 12px; }
 .btns.two { grid-template-columns: 1fr 1fr; }
+.btns.two .btn { white-space: nowrap; padding: 0 12px; gap: 8px; }
 
 .iconbtn {
   appearance: none; border: 0; background: var(--raise); color: var(--ink);
@@ -351,10 +352,10 @@ select.input {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 #toast {
-  position: fixed; left: 50%; top: calc(var(--safe-top) + 14px); z-index: 100;
-  transform: translate(-50%, calc(-100% - 60px)); transition: transform .3s var(--ease-out); visibility: hidden;
+  position: fixed; left: 50%; bottom: calc(var(--tabbar) + var(--safe-bottom) + 18px); z-index: 100;
+  transform: translate(-50%, calc(100% + var(--tabbar) + 80px)); transition: transform .3s var(--ease-out); visibility: hidden;
   background: var(--ink); color: var(--paper); font-weight: 800; font-stretch: 108%;
-  padding: 13px 18px; border-radius: 999px; max-width: calc(100% - 36px); text-align: center;
+  padding: 13px 20px; border-radius: 999px; width: max-content; max-width: calc(100vw - 36px); text-align: center;
   box-shadow: 0 6px 0 var(--accent);
 }
 #toast.show { transform: translate(-50%, 0); visibility: visible; }
@@ -417,6 +418,7 @@ select.input {
 
 .pick { display: grid; gap: 12px; }
 .pick .btn { justify-content: space-between; }
+.pick .btn#validate, .pick .btn.ghost { justify-content: center; }
 
 /* ---------- Mon jeu ---------- */
 .q-progress { height: 10px; border-radius: 5px; background: var(--raise-2); overflow: hidden; margin: 6px 0 20px; }

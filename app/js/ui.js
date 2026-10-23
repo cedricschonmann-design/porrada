@@ -18,6 +18,8 @@ export function h(tag, attrs, ...kids) {
   append(el, kids);
   return el;
 }
+// Comme replaceChildren, mais ignore null/false (replaceChildren écrirait « null »).
+export function fill(el, ...kids) { el.replaceChildren(); append(el, kids); return el; }
 function append(el, kids) {
   for (const k of kids) {
     if (k == null || k === false) continue;
@@ -126,7 +128,7 @@ export function toast(msg, ms = 2600) {
 export function seg(options, value, onChange) {
   const el = h('div', { class: 'seg', role: 'group' });
   const draw = () => {
-    el.replaceChildren(...options.map(([v, label]) => h('button', {
+    fill(el, ...options.map(([v, label]) => h('button', {
       type: 'button', 'aria-pressed': String(v === value),
       onclick: () => { value = v; draw(); onChange(v); },
     }, label)));

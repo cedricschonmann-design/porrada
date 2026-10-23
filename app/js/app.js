@@ -1,7 +1,7 @@
 // PORRADA — démarrage, navigation et profil.
 
 import { state, save, createMe, onChange } from './store.js';
-import { h, ICON, sheet, full, toast, seg, belt, avatar, BELTS, AGES, unlockAudio } from './ui.js';
+import { h, ICON, sheet, full, toast, seg, belt, avatar, BELTS, AGES, unlockAudio, fill } from './ui.js';
 import { startNet, onStatus, netStatus, deliver } from './net.js';
 import { scan } from './qr.js';
 import * as jeu from './screens/jeu.js';
@@ -50,7 +50,7 @@ export function render() {
       onclick: () => go(t.id),
     }, h('span', { class: 'ic', html: ICON[t.icon] }), t.label)),
   );
-  root.replaceChildren(screen, nav);
+  fill(root, screen, nav);
   window.scrollTo(0, y);
 }
 
@@ -79,7 +79,7 @@ function onboarding() {
     h('div', { class: 'field' }, h('span', null, 'Ta ceinture'),
       h('div', { class: 'list' }, (() => {
         const wrap = h('div', { class: 'chips' });
-        const draw = () => wrap.replaceChildren(...BELTS.map(([v, l]) => h('button', {
+        const draw = () => fill(wrap, ...BELTS.map(([v, l]) => h('button', {
           class: 'chip', type: 'button', 'aria-pressed': String(v === b), onclick: () => { b = v; draw(); },
         }, belt(v, 0), l)));
         draw();
