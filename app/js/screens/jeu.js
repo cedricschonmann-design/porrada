@@ -109,7 +109,7 @@ function quiz(prev) {
       const ta = h('textarea', { class: 'input', id: 'q-other-text', placeholder: 'Écris ta réponse', style: { marginTop: '10px', display: otherOpen ? 'block' : 'none' } }, a.other || '');
       const next = h('button', { class: 'btn primary lg block', id: 'q-next', onclick: () => go(1) }, i === qs.length - 1 ? 'Voir ma stratégie' : 'Suivant');
       const canNext = () => (many ? a.v.length > 0 : (a.v !== null && a.v !== '__other')) || a.other.trim() !== '';
-      const refresh = () => { next.disabled = !canNext(); };
+      const refresh = () => { next.disabled = !canNext(); next.classList.toggle('hidden', !many && ta.style.display !== 'block' && i < qs.length - 1); };
       ta.addEventListener('input', () => { a.other = ta.value; refresh(); });
       const toggle = (val) => {
         if (many) {

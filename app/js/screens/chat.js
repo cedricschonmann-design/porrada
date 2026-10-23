@@ -94,11 +94,11 @@ export function openChat(friendId) {
     ));
     page.onClosed(() => { if (openFor === friendId) { openFor = null; redraw = null; } });
     draw();
-    return h('div', null,
-      h('div', { style: { minHeight: 'calc(100vh - 260px)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' } }, chat),
+    return [
+      h('div', { class: 'chat-wrap bottom' }, chat),
       h('div', { class: 'composer' }, chips, h('div', { class: 'bar' }, input, sendBtn)),
-    );
-  }, { title: f0.name, bareNav: true });
+    ];
+  }, { title: f0.name, bareNav: true, cls: 'chatpage' });
 }
 
 // ---------- Réception ----------

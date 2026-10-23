@@ -256,7 +256,7 @@ export function openBoard(fid, qrCode = null) {
       fill(center, h('div', null, h('div', { class: 'giant count' }, '10'), h('div', { class: 'label', style: { marginTop: '6px' } }, 'Prêts ?')));
       bottom.append(cancelBtn());
     } else if (phase === 'round') {
-      const ring = h('div', { class: 'ring', html: `<svg viewBox="0 0 320 320"><circle class="bgc" cx="160" cy="160" r="${R}"/><circle class="fgc" cx="160" cy="160" r="${R}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0"/></svg>` });
+      const ring = h('div', { class: 'tring', html: `<svg viewBox="0 0 320 320"><circle class="bgc" cx="160" cy="160" r="${R}"/><circle class="fgc" cx="160" cy="160" r="${R}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0"/></svg>` });
       ring.append(h('div', null, h('div', { class: 'giant clock' }, mmss(roundMs(fight) * SPEED)), h('div', { class: 'muted', style: { marginTop: '8px', fontWeight: '700' } }, 'Combattez !')));
       fill(center, ring);
       bottom.append(h('button', {

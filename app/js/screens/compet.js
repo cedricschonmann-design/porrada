@@ -140,11 +140,11 @@ function openReferee(r) {
     drawAll();
     drawChips(defaultChips());
     setTimeout(() => { page.el.scrollTop = page.el.scrollHeight; }, 50);
-    return h('div', null,
-      h('div', { style: { minHeight: 'calc(100vh - 230px)' } }, chat),
+    return [
+      h('div', { class: 'chat-wrap' }, chat),
       log.length ? h('div', { class: 'center' }, h('button', { class: 'link muted', onclick: () => { log.length = 0; state.refChats[r.id] = []; save(); drawAll(); sfx('del'); } }, 'Effacer la conversation')) : null,
       h('div', { class: 'composer' }, chips, h('div', { class: 'bar' }, input, h('button', { class: 'iconbtn grad', 'aria-label': 'Envoyer', id: 'ref-send', 'data-silent': '', html: ICON.send, onclick: send }))),
-    );
-  }, { title: `${c.name} · ${r.short}`, bareNav: true });
+    ];
+  }, { title: c.name, bareNav: true, cls: 'chatpage' });
 }
 

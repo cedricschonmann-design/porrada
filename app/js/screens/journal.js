@@ -121,7 +121,8 @@ function chartCard() {
     const nice = max <= 4 ? max : Math.ceil(max / 2) * 2;
     const step = (W - L) / data.length;
     const bw = Math.min(16, step * 0.56);
-    const tip = h('div', { class: 'chart-tip', 'aria-live': 'polite' }, 'Touche une barre pour le détail.');
+    const empty = data.every((d) => !d.g && !d.r);
+    const tip = h('div', { class: 'chart-tip', 'aria-live': 'polite' }, empty ? (period === 'weeks' ? 'Rien de noté ces 8 dernières semaines.' : 'Rien de noté ces 12 derniers mois.') : 'Touche une barre pour le détail.');
     let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Soumissions placées et subies, ${period === 'weeks' ? '8 dernières semaines' : '12 derniers mois'}">`;
     svg += `<line class="grid" x1="${L}" x2="${W}" y1="${mid - amp}" y2="${mid - amp}"/><line class="grid" x1="${L}" x2="${W}" y1="${mid + amp}" y2="${mid + amp}"/>`;
     svg += `<text x="${L - 6}" y="${mid - amp + 4}" text-anchor="end">${nice}</text><text x="${L - 6}" y="${mid + amp + 4}" text-anchor="end">${nice}</text><text x="${L - 6}" y="${mid + 4}" text-anchor="end">0</text>`;

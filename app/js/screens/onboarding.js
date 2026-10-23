@@ -52,7 +52,7 @@ export function startOnboarding(onDone) {
 
   function draw() {
     const top = h('div', { class: 'between', style: { minHeight: '44px' } },
-      step > 0 && !(prev && step === 1) ? h('button', { class: 'backbtn', onclick: () => go(step - 1) }, h('span', { html: ICON.back, style: { display: 'contents' } }), h('span', null, 'Retour')) : h('span'),
+      step > 0 && step < STEPS - 1 && !(prev && step === 1) ? h('button', { class: 'backbtn', onclick: () => go(step - 1) }, h('span', { html: ICON.back, style: { display: 'contents' } }), h('span', null, 'Retour')) : h('span'),
       step > 0 && step < STEPS - 1 ? h('div', { class: 'dots' }, Array.from({ length: STEPS - 2 }, (_, i) => h('i', { class: i + 1 <= step ? 'on' : '' }))) : h('span'),
       h('span', { style: { width: '80px' } }),
     );
