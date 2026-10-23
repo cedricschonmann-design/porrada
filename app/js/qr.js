@@ -1,6 +1,6 @@
 // QR codes : affichage (bibliothèque qrcode-generator) et lecture par la caméra (jsQR).
 
-import { h, toast, icon, sheet } from './ui.js';
+import { h, toast, icon, sheet, ICON, sfx, haptic } from './ui.js';
 import { fromCode } from './net.js';
 
 export function qrSvg(text) {
@@ -8,7 +8,7 @@ export function qrSvg(text) {
   q.addData(text, 'Byte');
   q.make();
   const n = q.getModuleCount();
-  const quiet = 2;
+  const quiet = 1;
   let d = '';
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
@@ -22,7 +22,7 @@ export function qrSvg(text) {
 }
 
 // Ouvre la caméra et renvoie le premier code PORRADA lu (ou null si on ferme).
-export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.', onPaste } = {}) {
+export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.' } = {}) {
   return new Promise((resolve) => {
     let done = false;
     let stream = null;
@@ -37,6 +37,7 @@ export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.', onPa
       cancelAnimationFrame(raf);
       if (stream) stream.getTracks().forEach((t) => t.stop());
       el.remove();
+      if (val) { sfx('success'); haptic('medium'); }
       resolve(val);
     };
     const paste = async () => {
@@ -50,9 +51,9 @@ export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.', onPa
         h('p', { class: 'muted' }, 'Colle le code PORRADA que ton partenaire t’a envoyé.'),
         ta,
         h('button', {
-          class: 'btn primary block', onclick: () => {
+          class: 'btn primary lg block', onclick: () => {
             const mm = fromCode(ta.value);
-            if (!mm) { toast("Ce code n'est pas un code PORRADA."); return; }
+            if (!mm) { sfx('error'); ta.classList.add('err', 'shake'); setTimeout(() => ta.classList.remove('shake'), 400); toast('Ce code n’est pas un code PORRADA.'); return; }
             close(); finish(mm);
           },
         }, 'Valider'),
@@ -62,11 +63,14 @@ export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.', onPa
     const el = h('div', { class: 'scanner', role: 'dialog', 'aria-label': 'Scanner un code' },
       video,
       h('div', { class: 'frame' }),
+      h('div', { class: 'top-bar' },
+        h('button', { class: 'iconbtn', 'aria-label': 'Fermer', onclick: () => finish(null), html: ICON.close }),
+        h('span'),
+      ),
       msg,
       h('div', { class: 'hud' },
         h('p', null, hint),
-        h('button', { class: 'btn block small', onclick: onPaste || paste }, icon('paste'), 'Coller un code'),
-        h('button', { class: 'btn block small', onclick: () => finish(null) }, 'Fermer'),
+        h('button', { class: 'btn block', onclick: paste }, icon('paste'), 'Coller un code reçu par message'),
       ),
     );
     document.getElementById('layer').append(el);
@@ -84,14 +88,14 @@ export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.', onPa
         if (res && res.data) {
           const m = fromCode(res.data);
           if (m) { finish(m); return; }
-          msg.textContent = "Ce QR code n'est pas un code PORRADA.";
+          msg.textContent = 'Ce QR code n’est pas un code PORRADA.';
         }
       }
       raf = requestAnimationFrame(tick);
     };
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      msg.textContent = "La caméra n'est pas disponible ici. Utilise « Coller un code ».";
+      msg.textContent = 'La caméra n’est pas disponible ici. Colle plutôt le code reçu.';
       return;
     }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
@@ -103,7 +107,7 @@ export function scan({ hint = 'Vise le QR code PORRADA de ton partenaire.', onPa
         raf = requestAnimationFrame(tick);
       })
       .catch(() => {
-        msg.textContent = "Accès à la caméra refusé. Autorise-le dans Réglages › Safari › Caméra, ou utilise « Coller un code ».";
+        msg.textContent = 'Accès à la caméra refusé. Autorise-le dans Réglages › Safari › Caméra, ou colle le code reçu.';
       });
   });
 }

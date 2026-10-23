@@ -1,10 +1,10 @@
-// Mon jeu : le questionnaire (QCM avec « Autre ») et la fiche de stratégie.
+// Mon jeu : questionnaire à choix (avec « Autre »), puis la stratégie calculée par l'appli.
 
-import { state, save } from '../store.js';
-import { h, ICON, full, toast, day, fill } from '../ui.js';
-import { QUESTIONS, buildPlan } from '../data/questionnaire.js';
-import { REF_BY_ID } from '../data/referees.js';
+import { state, save, profile } from '../store.js';
+import { h, fill, ICON, push, toast, day, sfx, haptic, confetti } from '../ui.js';
+import { visibleQuestions, buildPlan } from '../data/questionnaire.js';
 import { header } from '../app.js';
+import { avatarOf } from '../people.js';
 
 export function render() {
   const versions = state.game.versions;
@@ -12,147 +12,192 @@ export function render() {
   if (!last) {
     return h('div', null,
       header('Mon jeu'),
-      h('div', { class: 'card accent', style: { padding: '24px 20px' } },
-        h('h2', { style: { fontSize: '30px' } }, 'Construis ton jeu'),
-        h('p', { style: { margin: '12px 0 18px' } }, `${QUESTIONS.length} questions à choix, environ 3 minutes. À la fin, tu reçois ta stratégie : ton style, ton plan A, tes finitions, ton plan B et 4 semaines de travail.`),
-        h('button', { class: 'btn dark block big', id: 'start-quiz', onclick: () => quiz() }, 'Commencer'),
+      h('div', { class: 'card hero grad', style: { padding: '22px' } },
+        h('div', { class: 'between', style: { alignItems: 'flex-start' } },
+          h('div', null,
+            h('div', { class: 'small', style: { fontWeight: '700', opacity: '.85' } }, '3 minutes, que des choix'),
+            h('h2', { style: { fontSize: '28px', margin: '6px 0 8px' } }, 'Construis ton jeu'),
+          ),
+          avatarOf(state.me, { size: 64 }),
+        ),
+        h('p', { style: { opacity: '.9' } }, 'À la fin : ton style, ton arbre de jeu, tes finitions et un plan sur 4 semaines.'),
+        h('button', { class: 'btn white lg block', id: 'start-quiz', style: { marginTop: '18px' }, onclick: () => quiz(null) }, h('span', { html: ICON.play, style: { display: 'contents' } }), 'Commencer'),
       ),
-      h('p', { class: 'small muted', style: { margin: '14px 4px' } }, 'Ton jeu évolue : refais le questionnaire quand tu veux, tes anciennes versions restent gardées.'),
+      h('div', { class: 'stack', style: { marginTop: '14px' } },
+        tip('🎯', 'Ton style', 'Parmi 8 profils de jeu : le Verrou, l’Araignée, le Passeur…'),
+        tip('🌳', 'Ton arbre de jeu', 'Du debout à la finition, avec ton plan B.'),
+        tip('🔁', 'À refaire', 'Ton jeu évolue : refais le questionnaire, tes versions restent gardées.'),
+      ),
     );
   }
   return h('div', null, header('Mon jeu'), planView(last, versions.length));
 }
 
-function planView(p, count) {
-  const fedName = p.fed ? REF_BY_ID[p.fed].short : null;
-  return h('div', { class: 'stack', id: 'plan' },
-    h('div', { class: 'plan-head' },
-      h('span', { class: 'tape small accent' }, 'Ton style'),
-      h('h2', { class: 'arch' }, p.style.name),
-      h('p', null, p.style.pitch),
+const tip = (em, t, s) => h('div', { class: 'rowc' }, h('span', { style: { fontSize: '26px', width: '36px', textAlign: 'center' } }, em), h('div', { class: 'grow' }, h('div', { class: 't' }, t), h('div', { class: 's' }, s)));
+
+function acc(icon, title, body, open = false) {
+  const el = h('div', { class: 'acc' + (open ? ' open' : '') });
+  const btn = h('button', { 'aria-expanded': String(open), onclick: () => { const o = el.classList.toggle('open'); btn.setAttribute('aria-expanded', String(o)); sfx(o ? 'open' : 'close'); } },
+    h('span', { class: 'ic' }, icon), h('span', { class: 't' }, title), h('span', { class: 'chev', html: ICON.chev }));
+  el.append(btn, h('div', { class: 'acc-body' }, h('div', null, h('div', { class: 'acc-in' }, body))));
+  return el;
+}
+
+function planView(p, count, { readonly = false } = {}) {
+  return h('div', { id: 'plan', class: 'stack' },
+    h('div', { class: 'card hero grad style-card' },
+      h('div', { class: 'k' }, `Ton style · ${day(p.at)}`),
+      h('div', { class: 'name' }, `${p.style.em || ''} ${p.style.name}`.trim()),
+      h('p', { style: { opacity: '.92' } }, p.style.pitch),
+      p.tags ? h('div', { class: 'chips' }, p.tags.map((t) => h('span', { class: 'chip static' }, t))) : null,
     ),
-    section('Debout', h('ul', { class: 'bullets' }, p.stand.map((x) => h('li', null, x)))),
-    section('Ton plan A', h('ol', { class: 'steps' }, p.planA.map((x) => h('li', null, x)))),
-    section('Tes finitions', h('div', null,
-      p.finishes.map((f) => h('div', { class: 'fin' },
-        h('b', null, f.name),
-        f.warn ? h('span', { class: 'tag danger' }, 'Interdit pour toi') : f.fav ? h('span', { class: 'tag grappling' }, 'Ta préférée') : null,
+    p.flow ? h('div', { class: 'card' },
+      h('h3', { style: { marginBottom: '12px' } }, 'Ton arbre de jeu'),
+      h('div', { class: 'flow' }, p.flow.map((n, i) => h('div', { class: 'node' + (n.key ? ' key' : '') }, h('span', { class: 'dot' }, i + 1), h('div', null, h('div', { class: 't' }, n.t), h('div', { class: 's' }, n.s))))),
+    ) : null,
+    h('div', null,
+      acc('🧍', 'Debout', h('ul', { class: 'bullets' }, p.stand.map((x) => h('li', null, x)))),
+      acc('🅰️', 'Ton plan A', h('ol', { class: 'steps' }, p.planA.map((x) => h('li', null, x))), !readonly),
+      acc('🎯', 'Tes finitions', h('div', null,
+        p.finishes.map((f) => h('div', { class: 'fin-row' }, h('b', null, f.name), f.warn ? h('span', { class: 'tag danger' }, 'Interdit pour toi') : f.fav ? h('span', { class: 'tag fav' }, 'Ta préférée') : h('span', { class: 'tag ok' }, 'Autorisée'))),
+        p.finishes.some((f) => f.warn) ? h('p', { class: 'small muted', style: { marginTop: '8px' } }, `${[...new Set(p.finishes.filter((f) => f.warn).map((f) => f.warn))].join(' ; ')}. Garde-les pour l’entraînement.`) : null,
+        p.fed ? null : h('p', { class: 'small muted', style: { marginTop: '8px' } }, 'Pas de règlement choisi : vérifie ce qui t’est interdit dans l’onglet Compét.'),
       )),
-      p.finishes.some((f) => f.warn) ? h('p', { class: 'small muted', style: { marginTop: '10px' } },
-        `Marquées « interdit » : ${p.finishes.filter((f) => f.warn).map((f) => f.warn).filter((x, i, a) => a.indexOf(x) === i).join(' ; ')}. Garde-les pour l’entraînement.`) : null,
-      fedName ? null : h('p', { class: 'small muted', style: { marginTop: '10px' } }, 'Tu n’as pas choisi de règlement : vérifie ce qui t’est interdit dans l’onglet Compét.'),
-    )),
-    section(`Ton plan B : ${p.planB.name}`, h('div', null, h('p', { class: 'muted' }, p.planB.pitch), h('ol', { class: 'steps' }, p.planB.steps.map((x) => h('li', null, x))))),
-    section('Ta défense prioritaire', h('div', { class: 'stack' }, p.defense.map((d) => h('div', null, h('b', null, d.t), h('ul', { class: 'bullets', style: { marginTop: '8px' } }, d.b.map((x) => h('li', null, x))))))),
-    section('Ton focus sur 4 semaines', h('div', { class: 'weeks' }, p.weeks.map((w) => h('div', { class: 'week' }, h('b', null, w.w), h('span', null, w.t))))),
-    p.goal ? h('div', { class: 'card' }, p.goal) : null,
-    p.notes.length ? section('Tes précisions', h('ul', { class: 'bullets' }, p.notes.map((n) => h('li', null, h('span', { class: 'muted' }, n.q + ' '), '« ' + n.t + ' »')))) : null,
-    h('p', { class: 'small muted' }, `Stratégie du ${day(p.at)}, en ${p.mode === 'nogi' ? 'No-Gi' : 'Gi'}${fedName ? ', règlement ' + fedName : ''}.`),
-    h('button', { class: 'btn primary block big', id: 'redo-quiz', onclick: () => quiz(p.answers) }, h('span', { style: { display: 'contents' }, html: ICON.redo }), 'Refaire le questionnaire'),
-    count > 1 ? h('button', { class: 'btn block', onclick: versionsView }, `Mes ${count} versions`) : null,
+      p.counters ? acc('🔀', 'S’il fait ça, tu fais ça', h('div', { class: 'stack', style: { gap: '8px' } }, p.counters.map(([a, b]) => h('div', { class: 'week' }, h('b', null, a), h('span', null, b))))) : null,
+      acc(p.planB.em || '🅱️', `Plan B : ${p.planB.name}`, h('div', { class: 'stack' }, h('p', { class: 'muted' }, p.planB.pitch), h('ol', { class: 'steps' }, p.planB.steps.map((x) => h('li', null, x))))),
+      acc('🛡️', 'Ta défense prioritaire', h('div', { class: 'stack' }, p.defense.map((d) => h('div', null, h('b', null, d.t), h('ul', { class: 'bullets', style: { marginTop: '8px' } }, d.b.map((x) => h('li', null, x))))))),
+      p.legs ? acc('🦵', 'Les clés de jambe', h('ul', { class: 'bullets' }, p.legs.map((x) => h('li', null, x)))) : null,
+      p.fragile && p.fragile.length ? acc('🩹', 'Ce que tu ménages', h('ul', { class: 'bullets' }, p.fragile.map((x) => h('li', null, x)))) : null,
+      acc('🗓️', 'Ton plan sur 4 semaines', h('div', { class: 'stack', style: { gap: '8px' } }, p.weeks.map((w) => h('div', { class: 'week' }, h('b', null, `${w.w} · ${w.t || ''}`.replace(/ · $/, '')), h('span', null, w.drill || w.t), w.spar ? h('span', { class: 'muted small' }, w.spar) : null)))),
+      p.notes.length ? acc('✍️', 'Tes précisions', h('ul', { class: 'bullets' }, p.notes.map((n) => h('li', null, h('span', { class: 'muted' }, n.q + ' '), '« ' + n.t + ' »')))) : null,
+    ),
+    p.goal ? h('div', { class: 'card tint' }, p.goal) : null,
+    readonly ? null : h('div', { class: 'btns', style: { marginTop: '6px' } },
+      h('button', { class: 'btn primary lg block', id: 'redo-quiz', onclick: () => quiz(p.answers) }, h('span', { html: ICON.redo, style: { display: 'contents' } }), 'Mon jeu a évolué'),
+      count > 1 ? h('button', { class: 'btn block', onclick: versionsView }, `Mes ${count} versions`) : null,
+    ),
   );
 }
 
-function section(title, body) {
-  return h('section', { class: 'plan-sec' }, h('h3', null, title), body);
-}
-
 function versionsView() {
-  full((close) => h('div', { class: 'inner stack' },
-    h('div', { class: 'bar-top' },
-      h('button', { class: 'iconbtn', 'aria-label': 'Retour', onclick: close, html: ICON.back }),
-      h('h2', { class: 'tape small' }, 'Mes versions'),
-      h('span', { style: { width: '48px' } }),
-    ),
-    h('div', { class: 'list' }, [...state.game.versions].reverse().map((v, i) => h('button', {
-      class: 'row', onclick: () => full((c2) => h('div', { class: 'inner' },
-        h('div', { class: 'bar-top' }, h('button', { class: 'iconbtn', 'aria-label': 'Retour', onclick: c2, html: ICON.back }), h('span')),
-        planView(v, 0))),
-    },
-    h('div', { class: 'grow' }, h('div', { class: 'title' }, v.style.name), h('div', { class: 'sub' }, `${day(v.at)}${i === 0 ? ', version actuelle' : ''}`)),
-    h('span', { class: 'chev', html: ICON.chev })))),
-  ));
+  push(() => h('div', null,
+    h('h1', { class: 'page-title' }, 'Mes versions'),
+    h('div', { class: 'rows' }, [...state.game.versions].reverse().map((v, i) => h('button', {
+      class: 'rowc', onclick: () => push(() => planView(v, 0, { readonly: true }), { title: v.style.name }),
+    }, h('span', { style: { fontSize: '26px' } }, v.style.em || '🥋'), h('div', { class: 'grow' }, h('div', { class: 't' }, v.style.name), h('div', { class: 's' }, `${day(v.at)}${i === 0 ? ' · actuelle' : ''}`)), h('span', { class: 'chev', html: ICON.chev })))),
+  ), { title: 'Mes versions' });
 }
 
 // ---------- Le questionnaire ----------
 function quiz(prev) {
-  const answers = {};
-  if (prev) for (const [k, v] of Object.entries(prev)) answers[k] = { v: Array.isArray(v.v) ? [...v.v] : v.v, other: v.other || '' };
+  const answers = prev ? JSON.parse(JSON.stringify(prev)) : {};
   let i = 0;
-  full((close, el) => {
-    const wrap = h('div', { class: 'inner', id: 'quiz' });
+  let dir = 1;
+  push((page) => {
+    const wrap = h('div', { id: 'quiz' });
     const draw = () => {
-      const q = QUESTIONS[i];
-      const a = answers[q.id] || (answers[q.id] = { v: q.type === 'many' ? [] : null, other: '' });
+      const qs = visibleQuestions(answers);
+      if (i >= qs.length) { finish(); return; }
+      const q = qs[i];
       const many = q.type === 'many';
-      const otherOn = a.other !== '' || a.otherOpen;
-      const isOn = (v) => (many ? a.v.includes(v) : a.v === v);
-      const toggle = (v) => {
+      const a = answers[q.id] || (answers[q.id] = { v: many ? [] : null, other: '' });
+      if (many && !Array.isArray(a.v)) a.v = [];
+      // nettoie les choix devenus invisibles
+      if (many) a.v = a.v.filter((x) => q.opts.some((o) => o.v === x));
+      const isOn = (val) => (many ? a.v.includes(val) : a.v === val);
+      const otherOpen = !!a.other || a.v === '__other';
+      const ta = h('textarea', { class: 'input', id: 'q-other-text', placeholder: 'Écris ta réponse', style: { marginTop: '10px', display: otherOpen ? 'block' : 'none' } }, a.other || '');
+      const next = h('button', { class: 'btn primary lg block', id: 'q-next', onclick: () => go(1) }, i === qs.length - 1 ? 'Voir ma stratégie' : 'Suivant');
+      const canNext = () => (many ? a.v.length > 0 : (a.v !== null && a.v !== '__other')) || a.other.trim() !== '';
+      const refresh = () => { next.disabled = !canNext(); };
+      ta.addEventListener('input', () => { a.other = ta.value; refresh(); });
+      const toggle = (val) => {
         if (many) {
-          if (a.v.includes(v)) a.v = a.v.filter((x) => x !== v);
+          if (a.v.includes(val)) a.v = a.v.filter((x) => x !== val);
           else {
-            if (q.max && a.v.length >= q.max) a.v.shift();
-            a.v.push(v);
+            if (val === 'aucune' || val === 'aucun') a.v = [];
+            else a.v = a.v.filter((x) => x !== 'aucune' && x !== 'aucun');
+            if (q.max && a.v.length >= q.max) { a.v.shift(); }
+            a.v.push(val);
           }
-          draw();
+          sfx('toggle'); haptic('light');
+          drawOpts(); refresh();
         } else {
-          a.v = v;
-          a.otherOpen = false;
-          draw();
-          setTimeout(next, 220);
+          a.v = val;
+          sfx('toggle'); haptic('light');
+          drawOpts(); refresh();
+          if (!a.other) setTimeout(() => go(1), 260);
         }
       };
-      const otherInput = h('textarea', { class: 'input', placeholder: 'Écris ta réponse', maxlength: '160', 'aria-label': 'Autre réponse', oninput: (e) => { a.other = e.target.value; nextBtn.disabled = !canNext(); } }, a.other);
-      const canNext = () => (many ? a.v.length > 0 : a.v !== null) || a.other.trim() !== '';
-      const nextBtn = h('button', { class: 'btn primary block big', id: 'q-next', onclick: next, disabled: !canNext() }, i === QUESTIONS.length - 1 ? 'Voir ma stratégie' : 'Suivant');
-      fill(wrap, 
-        h('div', { class: 'bar-top' },
-          h('button', { class: 'iconbtn', 'aria-label': i ? 'Question précédente' : 'Fermer', onclick: () => { if (i) { i--; draw(); } else close(); }, html: i ? ICON.back : ICON.close }),
-          h('b', { class: 'num' }, `${i + 1} / ${QUESTIONS.length}`),
-          h('span', { style: { width: '48px' } }),
+      const opts = h('div', { class: 'opts' });
+      const drawOpts = () => fill(opts,
+        ...q.opts.map((o) => h('button', { class: 'opt' + (many ? '' : ' one'), 'aria-pressed': String(isOn(o.v)), 'data-silent': '', onclick: () => toggle(o.v) },
+          o.em ? h('span', { class: 'em' }, o.em) : null,
+          h('span', { class: 'grow' }, o.l, o.d ? h('span', { class: 'd' }, o.d) : null),
+          h('span', { class: 'mark', html: ICON.check }))),
+        h('button', {
+          class: 'opt' + (many ? '' : ' one'), id: 'q-other', 'data-silent': '', 'aria-pressed': String(ta.style.display === 'block'),
+          onclick: () => {
+            const show = ta.style.display !== 'block';
+            ta.style.display = show ? 'block' : 'none';
+            if (!many) a.v = show ? '__other' : null;
+            if (!show) { a.other = ''; ta.value = ''; }
+            drawOpts(); refresh();
+            if (show) setTimeout(() => ta.focus(), 50);
+          },
+        }, h('span', { class: 'em' }, '✍️'), h('span', { class: 'grow' }, 'Autre'), h('span', { class: 'mark', html: ICON.check })),
+      );
+      drawOpts();
+      refresh();
+      fill(wrap,
+        h('div', { class: 'hstack' },
+          i > 0 ? h('button', { class: 'iconbtn', 'aria-label': 'Question précédente', html: ICON.back, onclick: () => go(-1) }) : null,
+          h('div', { class: 'q-progress grow' }, h('i', { style: { width: `${((i + 1) / qs.length) * 100}%` } })),
+          h('span', { class: 'small muted num', style: { minWidth: '44px', textAlign: 'right' } }, `${i + 1}/${qs.length}`),
         ),
-        h('div', { class: 'q-progress' }, h('i', { style: { width: `${((i + 1) / QUESTIONS.length) * 100}%` } })),
-        h('h2', { class: 'q-title' }, q.q),
-        many ? h('p', { class: 'muted' }, q.max ? `Jusqu’à ${q.max} réponses.` : 'Plusieurs réponses possibles.') : null,
-        h('div', { class: 'opts' },
-          q.opts.map((o) => h('button', { class: 'opt' + (many ? '' : ' radio'), 'aria-pressed': String(isOn(o.v)), onclick: () => toggle(o.v) }, h('span', { class: 'box' }), o.l)),
-          h('button', {
-            class: 'opt' + (many ? '' : ' radio'), 'aria-pressed': String(otherOn), id: 'q-other',
-            onclick: () => {
-              if (otherOn) { a.other = ''; a.otherOpen = false; } else { a.otherOpen = true; if (!many) a.v = null; }
-              draw();
-              if (a.otherOpen) setTimeout(() => wrap.querySelector('textarea') && wrap.querySelector('textarea').focus(), 50);
-            },
-          }, h('span', { class: 'box' }), 'Autre'),
-          otherOn ? otherInput : null,
+        h('div', { class: 'q-wrap' + (dir < 0 ? ' back' : '') },
+          h('h2', { class: 'q-title' }, q.q),
+          h('p', { class: 'q-help' }, q.help || (many ? (q.max ? `Jusqu’à ${q.max} réponses.` : 'Plusieurs réponses possibles.') : 'Une seule réponse.')),
+          opts, ta,
         ),
-        h('div', { style: { marginTop: '22px' } }, many || otherOn || i === QUESTIONS.length - 1 ? nextBtn : null),
+        h('div', { class: 'q-foot' }, next),
       );
     };
-    const next = () => {
-      const q = QUESTIONS[i];
-      const a = answers[q.id];
-      if (!((q.type === 'many' ? a.v.length > 0 : a.v !== null) || a.other.trim())) return;
-      if (i < QUESTIONS.length - 1) { i++; draw(); el.scrollTo(0, 0); return; }
-      finish();
+    const go = (d) => {
+      if (d > 0) {
+        const qs = visibleQuestions(answers);
+        const a = answers[qs[i].id];
+        if (a && a.v === '__other') a.v = null;
+      }
+      dir = d; i = Math.max(0, i + d);
+      page.el.scrollTop = 0;
+      sfx(d > 0 ? 'push' : 'close');
+      draw();
     };
     const finish = () => {
       const clean = {};
-      for (const [k, v] of Object.entries(answers)) clean[k] = { v: v.v, other: (v.other || '').trim() };
-      fill(wrap, h('div', { style: { display: 'grid', placeItems: 'center', minHeight: '70vh', gap: '18px', textAlign: 'center' } },
-        h('div', { class: 'spinner', style: { width: '56px', height: '56px', borderWidth: '6px' } }),
-        h('h2', null, 'Analyse de ton jeu…'),
+      for (const q of visibleQuestions(answers)) {
+        const a = answers[q.id];
+        if (a) clean[q.id] = { v: a.v === '__other' ? null : a.v, other: (a.other || '').trim() };
+      }
+      const steps = ['Ton style…', 'Ton arbre de jeu…', 'Tes finitions et ce qui t’est interdit…', 'Ton plan sur 4 semaines…'];
+      const list = h('div', { class: 'stack', style: { marginTop: '22px' } });
+      fill(wrap, h('div', { style: { minHeight: '60vh', display: 'grid', alignContent: 'center', justifyItems: 'center', gap: '18px', textAlign: 'center' } },
+        avatarOf(state.me, { size: 96, ring: true }),
+        h('h2', null, 'Analyse de ton jeu'),
+        list,
       ));
+      steps.forEach((s, k) => setTimeout(() => { list.append(h('div', { class: 'hstack', style: { animation: 'fadeUp .35s both', justifyContent: 'center' } }, h('span', { class: 'spinner', style: { width: '16px', height: '16px', borderWidth: '2px' } }), h('span', { class: 'muted' }, s))); sfx('tap'); }, k * 330));
       setTimeout(() => {
-        const plan = buildPlan(clean, state.me);
-        state.game.versions.push(plan);
+        state.game.versions.push(buildPlan(clean, profile()));
         save();
-        close();
-        window.scrollTo(0, 0);
-        toast(`Ton style : ${plan.style.name}.`);
-      }, 1100);
+        page.close({ silent: true });
+        sfx('levelup'); haptic('heavy'); confetti(80);
+        toast('Ta stratégie est prête.', { ok: true });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, steps.length * 330 + 300);
     };
     draw();
     return wrap;
-  });
+  }, { title: 'Construis ton jeu', modal: true });
 }

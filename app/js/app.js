@@ -1,15 +1,17 @@
-// PORRADA — démarrage, navigation et profil.
+// PORRADA — démarrage, onglets, en-tête.
 
-import { state, save, createMe, onChange } from './store.js';
-import { h, ICON, sheet, full, toast, seg, belt, avatar, BELTS, AGES, unlockAudio, fill } from './ui.js';
+import { state, save, onChange, unreadTotal } from './store.js';
+import { h, ICON, fill, sfx, haptic, setPrefs, setTabTitle, openCount, unlockAudio, gradDefs } from './ui.js';
 import { startNet, onStatus, netStatus, deliver } from './net.js';
 import { scan } from './qr.js';
+import { avatarOf } from './people.js';
 import * as jeu from './screens/jeu.js';
 import * as amis from './screens/amis.js';
 import * as journal from './screens/journal.js';
 import * as compet from './screens/compet.js';
 import * as combat from './screens/combat.js';
-import { openProfile } from './screens/profil.js';
+import { openSettings, openMyProfile } from './screens/settings.js';
+import { startOnboarding } from './screens/onboarding.js';
 
 const TABS = [
   { id: 'jeu', label: 'Mon jeu', icon: 'game', mod: jeu },
@@ -20,103 +22,97 @@ const TABS = [
 
 const root = document.getElementById('app');
 let current = null;
+let tabbar = null;
+let screenEl = null;
 
 function tabFromHash() {
   const id = location.hash.replace('#', '');
   return TABS.find((t) => t.id === id) ? id : 'jeu';
 }
 
-export function header(title, extra) {
-  const dot = netStatus() === 'online';
+export function header(title, { extra = null } = {}) {
   return h('div', { class: 'top' },
-    h('h1', { class: 'tape' }, title),
-    h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-      extra || null,
-      avatar(state.me.name, { me: true, dot, onclick: openProfile }),
+    h('h1', null, title),
+    h('div', { class: 'acts' },
+      extra,
+      h('button', { class: 'iconbtn', 'aria-label': 'Réglages', onclick: openSettings, html: ICON.gear }),
+      avatarOf(state.me, { size: 42, ring: true, dot: netStatus() === 'online', onclick: openMyProfile, label: 'Mon profil' }),
     ),
   );
 }
 
-export function render() {
-  if (!state.me) return;
+function buildTabbar() {
+  tabbar = h('nav', { class: 'tabbar', 'aria-label': 'Navigation' }, h('span', { class: 'ind' }),
+    TABS.map((t) => h('button', { type: 'button', 'data-tab': t.id, onclick: () => go(t.id) }, h('span', { html: ICON[t.icon], style: { display: 'contents' } }), t.label)));
+  document.body.append(tabbar);
+}
+
+function syncTabbar() {
+  if (!tabbar) buildTabbar();
+  const i = TABS.findIndex((t) => t.id === current);
+  tabbar.style.setProperty('--i', i);
+  tabbar.querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-current', b.dataset.tab === current ? 'page' : 'false');
+    const old = b.querySelector('.badge');
+    if (old) old.remove();
+    if (b.dataset.tab === 'amis') {
+      const n = unreadTotal();
+      if (n) b.append(h('span', { class: 'badge' }, n > 9 ? '9+' : n));
+    }
+  });
+}
+
+export function render(anim = null) {
+  if (!booted || !state.me || !state.me.onboarded) return;
   const tab = TABS.find((t) => t.id === current) || TABS[0];
   const y = window.scrollY;
-  const screen = h('main', { class: 'screen', id: 'screen-' + tab.id });
+  const screen = h('main', { class: 'screen' + (anim ? ' ' + anim : ''), id: 'screen-' + tab.id });
   screen.append(tab.mod.render());
-  const nav = h('nav', { class: 'tabs', 'aria-label': 'Navigation' },
-    TABS.map((t) => h('button', {
-      type: 'button',
-      'aria-current': t.id === tab.id ? 'page' : null,
-      onclick: () => go(t.id),
-    }, h('span', { class: 'ic', html: ICON[t.icon] }), t.label)),
-  );
-  fill(root, screen, nav);
-  window.scrollTo(0, y);
+  fill(root, screen);
+  screenEl = screen;
+  document.body.dataset.tab = tab.id;
+  setTabTitle(tab.label);
+  syncTabbar();
+  if (!anim) window.scrollTo(0, y);
 }
 
 export function go(id) {
   if (current === id) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  const from = TABS.findIndex((t) => t.id === current);
+  const to = TABS.findIndex((t) => t.id === id);
   current = id;
   history.replaceState(null, '', '#' + id);
+  sfx('tab');
+  haptic('light');
   window.scrollTo(0, 0);
-  render();
+  render(from < 0 ? 'in-f' : to > from ? 'in-r' : 'in-l');
 }
 
-// Scanner universel : un code peut être une carte d'ami, une invitation, une réponse…
+// Scanner universel : un code peut être une carte d'ami, une invitation, un résultat…
 export async function scanAny(hint) {
   const msg = await scan({ hint });
   if (msg) deliver(msg, 'qr');
 }
 
-function onboarding() {
-  let b = 'blanche';
-  let age = 'adulte';
-  const name = h('input', { class: 'input', placeholder: 'Ton prénom', maxlength: '24', autocomplete: 'given-name', 'aria-label': 'Ton prénom' });
-  const close = full((closeIt) => h('div', { class: 'inner stack' },
-    h('div', { style: { margin: '18px 0 8px' } }, h('h1', { class: 'tape accent', style: { fontSize: '44px' } }, 'PORRADA')),
-    h('p', { class: 'muted' }, 'Ton jeu, tes combats, ton journal, et les règles des compétitions. Tout reste sur ton téléphone.'),
-    h('label', { class: 'field' }, h('span', null, 'Comment tu t’appelles ?'), name),
-    h('div', { class: 'field' }, h('span', null, 'Ta ceinture'),
-      h('div', { class: 'list' }, (() => {
-        const wrap = h('div', { class: 'chips' });
-        const draw = () => fill(wrap, ...BELTS.map(([v, l]) => h('button', {
-          class: 'chip', type: 'button', 'aria-pressed': String(v === b), onclick: () => { b = v; draw(); },
-        }, belt(v, 0), l)));
-        draw();
-        return wrap;
-      })()),
-    ),
-    h('label', { class: 'field' }, h('span', null, 'Ta catégorie d’âge'),
-      (() => {
-        const sel = h('select', { class: 'input', onchange: (e) => { age = e.target.value; } }, AGES.map(([v, l]) => h('option', { value: v, selected: v === age }, l)));
-        return sel;
-      })(),
-    ),
-    h('p', { class: 'small muted' }, 'La ceinture et l’âge servent à te dire ce qui t’est interdit en compétition.'),
-    h('button', {
-      class: 'btn primary block big', onclick: () => {
-        if (!name.value.trim()) { toast('Écris ton prénom.'); name.focus(); return; }
-        createMe({ name: name.value, belt: b, stripes: 0, age });
-        closeIt();
-        boot();
-      },
-    }, 'C’est parti'),
-  ), {});
-  setTimeout(() => name.focus(), 300);
-  return close;
-}
-
-function applyTheme() {
-  const t = state.settings.theme;
+export function applyTheme() {
+  const s = state.settings;
+  const t = s.theme;
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
   else delete document.documentElement.dataset.theme;
-  window.__porradaMute = state.settings.sound === false;
+  document.documentElement.classList.toggle('reduce-motion', !!s.reduceMotion);
+  setPrefs({ sound: s.sound !== false, haptics: s.haptics !== false, timerSound: s.timerSound !== false });
+  const dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#000000' : '#f3f0f8'));
 }
 
+let booted = false;
 function boot() {
   applyTheme();
   current = tabFromHash();
-  render();
+  const first = !booted;
+  booted = true;
+  render('in-f');
+  if (!first) return;
   startNet();
   combat.resume();
   journal.resume();
@@ -130,12 +126,12 @@ onChange(() => {
   requestAnimationFrame(() => { pending = false; render(); });
 });
 onStatus(() => render());
-window.addEventListener('hashchange', () => { const t = tabFromHash(); if (t !== current) { current = t; render(); } });
+window.addEventListener('hashchange', () => { const t = tabFromHash(); if (t !== current) go(t); });
 document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
-document.addEventListener('click', unlockAudio, { once: true });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
 // Mise à jour automatique : le nouveau service worker prend la main, on recharge
-// (sauf pendant un combat ou un cours, on attend la fin).
+// (sauf pendant un combat, un cours ou un écran ouvert : on attend).
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
     setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
@@ -145,7 +141,7 @@ if ('serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloading || !hadController) return;
-    const busy = () => combat.isBusy() || !!state.course || document.querySelector('.full, .sheet, .scanner, .board');
+    const busy = () => combat.isBusy() || !!state.course || openCount() > 0 || document.querySelector('.scanner, .onb');
     const tryReload = () => {
       if (busy()) { setTimeout(tryReload, 5000); return; }
       reloading = true;
@@ -155,5 +151,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-if (state.me) boot(); else onboarding();
+document.body.prepend(gradDefs());
+if (state.me && state.me.onboarded) boot();
+else startOnboarding(() => boot());
+
 window.__porrada = { state, save, deliver };

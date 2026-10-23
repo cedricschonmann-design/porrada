@@ -49,8 +49,8 @@ export function ibjjfCat(p, mode) {
   return p.age === 'adulte' && mode === 'nogi' ? 'F' : 'E';
 }
 
-const isYouth = (p) => ['u13', 'u16', 'u18'].includes(p.age);
-const level = (p) => (p.belt === 'blanche' ? 'debutant' : p.belt === 'bleue' || p.belt === 'violette' ? 'intermediaire' : 'avance');
+export const isYouth = (p) => ['u13', 'u16', 'u18'].includes(p.age);
+export const level = (p) => (p.belt === 'blanche' ? 'debutant' : p.belt === 'bleue' || p.belt === 'violette' ? 'intermediaire' : 'avance');
 
 // Une soumission est-elle interdite pour ce profil ? Renvoie la raison, ou null.
 export function illegalFor(fed, sub, p, mode) {
@@ -80,7 +80,7 @@ export function illegalFor(fed, sub, p, mode) {
 // ---------- Les fiches des arbitres ----------
 const T = (rows) => ({ table: rows });
 
-function forMe(p) {
+export function forMe(p) {
   const age = { u13: 'moins de 13 ans', u16: '13-15 ans', u18: '16-17 ans', adulte: 'adulte', master: 'master' }[p.age] || 'adulte';
   return `ceinture ${p.belt}, ${age}`;
 }
@@ -469,7 +469,7 @@ export const QUICK = [
   ['egalite', 'En cas d’égalité'], ['interdits', 'Ce qui m’est interdit'], ['penalites', 'Les pénalités'], ['format', 'Le format'],
 ];
 
-const KEYWORDS = {
+export const KEYWORDS = {
   pesee: ['pese', 'poids', 'balance', 'kilo', 'kg', 'peser', 'categorie de poids', 'weigh'],
   duree: ['duree', 'combien de temps', 'minute', 'temps', 'dure', 'long', 'chrono', 'prolongation', 'overtime'],
   points: ['point', 'score', 'marque', 'vaut', 'montee', 'passage', 'renvers', 'sweep', 'amene', 'takedown', 'avantage', 'dos', 'genou sur'],
@@ -480,7 +480,7 @@ const KEYWORDS = {
   format: ['format', 'poule', 'tableau', 'combien de combat', 'elimination', 'round robin'],
 };
 
-function findSub(q) {
+export function findSub(q) {
   const nq = ' ' + norm(q) + ' ';
   let best = null;
   for (const s of SUBMISSIONS) {

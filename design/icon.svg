@@ -1,1 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#000"/><circle cx="512" cy="512" r="300" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#000"/>
+  <g transform="translate(0 6)">
+    <path fill="#fff" fill-rule="evenodd" d="M512 232c-172 0-302 78-302 176s130 176 302 176 302-78 302-176-130-176-302-176zm0 64c-118 0-206 40-206 90s88 90 206 90 206-40 206-90-88-90-206-90z"/>
+    <g stroke="#000" stroke-width="26" stroke-linejoin="round">
+      <g transform="translate(486 598) rotate(42)">
+        <rect x="-60" y="0" width="120" height="300" fill="#fff"/>
+        <rect x="-60" y="176" width="120" height="86" fill="#000" stroke="none"/>
+        <rect x="-60" y="192" width="120" height="12" fill="#fff" stroke="none"/>
+        <rect x="-60" y="214" width="120" height="12" fill="#fff" stroke="none"/>
+        <rect x="-60" y="236" width="120" height="12" fill="#fff" stroke="none"/>
+      </g>
+      <g transform="translate(538 598) rotate(-42)">
+        <rect x="-60" y="0" width="120" height="296" fill="#fff"/>
+      </g>
+      <path fill="#fff" d="M420 500 Q512 474 604 500 L618 646 Q512 676 406 646 Z"/>
+    </g>
+    <path d="M422 612 Q520 562 610 524" fill="none" stroke="#000" stroke-width="22" stroke-linecap="round"/>
+  </g>
+</svg>
