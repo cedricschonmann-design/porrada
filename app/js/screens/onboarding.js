@@ -4,11 +4,7 @@ import { state, save, createMe, importData, importTransfer, isIOS, isStandalone 
 import { h, fill, ICON, seg, toast, sfx, haptic, belt, BELTS, confetti, sheet } from '../ui.js';
 import { avatarOf, pickPhoto } from '../people.js';
 
-export const LOGO = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="56" stroke-linejoin="miter" stroke-miterlimit="4">
-<path class="draw" pathLength="1" d="M512 202 L780.5 667 L243.5 667 Z"/>
-<path class="draw d2" pathLength="1" d="M512 822 L243.5 357 L780.5 357 Z"/>
-<g class="fillin"><path d="M512 202 L780.5 667 L243.5 667 Z"/><path d="M512 822 L243.5 357 L780.5 357 Z"/></g>
-</g></svg>`;
+export const LOGO = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><text x="512" y="613.5" text-anchor="middle" fill="#fff" style="font-family:Archivo,sans-serif;font-weight:900;font-stretch:125%;font-size:300px;letter-spacing:-0.01em">BJJ</text></svg>`;
 
 const USER_RE = /^[a-z0-9._]{3,20}$/;
 const MAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

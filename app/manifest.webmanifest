@@ -12,8 +12,8 @@
   "theme_color": "#000000",
   "categories": ["sports", "health", "fitness"],
   "icons": [
-    { "src": "icons/star-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/star-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/star-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/bjj-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/bjj-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/bjj-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

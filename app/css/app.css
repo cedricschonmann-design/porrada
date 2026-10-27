@@ -852,11 +852,9 @@ button.av:active { transform: scale(.92); }
 .onb .step.back { animation: inL .4s var(--ease) both; }
 .onb h1 { font-size: 34px; }
 .logo-mark { width: 120px; height: 120px; border-radius: 32px; background: #000; display: grid; place-items: center; box-shadow: 0 20px 50px -18px rgba(200, 77, 255, .8), inset 0 0 0 1px rgba(255, 255, 255, .12); }
-.logo-mark svg { width: 86%; height: 86%; }
-.logo-mark .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1s var(--ease) forwards; }
-.logo-mark .d2 { animation-delay: .3s; }
+.logo-mark svg { width: 100%; height: 100%; }
+.logo-mark svg text { animation: appear .5s .15s var(--ease) backwards; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
-.logo-mark .fillin { opacity: 0; animation: appear .3s 1.25s forwards; }
 @keyframes appear { to { opacity: 1; } }
 .wordmark { font-weight: 900; font-stretch: 125%; font-size: 44px; letter-spacing: -.01em; line-height: 1; }
 .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

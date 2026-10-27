@@ -29,10 +29,10 @@ const FILES = [
   'js/data/questionnaire.js',
   'js/data/submissions.js',
   'js/data/referees.js',
-  'icons/star-192.png',
-  'icons/star-512.png',
-  'icons/star-maskable-512.png',
-  'icons/star-touch-180.png',
+  'icons/bjj-192.png',
+  'icons/bjj-512.png',
+  'icons/bjj-maskable-512.png',
+  'icons/bjj-touch-180.png',
 ];
 
 self.addEventListener('install', (event) => {
