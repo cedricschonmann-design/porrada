@@ -352,41 +352,6 @@ function traitsOf(answers) {
   return T;
 }
 
-// Le profil en toile d'araignée : 8 axes lisibles, chacun regroupe des traits proches.
-const AXES = [
-  ['Garde', ['guard']],
-  ['Jambes', ['legs']],
-  ['Mobilité', ['mobility', 'flex']],
-  ['Patience', ['patience', 'counter']],
-  ['Physique', ['explo', 'cardio', 'force']],
-  ['Debout', ['wrestle', 'throws']],
-  ['Dessus', ['top', 'pressure']],
-  ['Dos', ['back']],
-];
-// Score maximum possible sur chaque axe (meilleures réponses à chaque question)
-let AXIS_MAX = null;
-function axisMax() {
-  if (AXIS_MAX) return AXIS_MAX;
-  AXIS_MAX = AXES.map(([, ks]) => {
-    let total = 0;
-    for (const q of QUESTIONS) {
-      const gains = q.opts.map((o) => ks.reduce((s, k) => s + Math.max(0, (o.t || {})[k] || 0), 0)).sort((a, b) => b - a);
-      const n = q.type === 'many' ? (q.max || 2) : 1;
-      total += gains.slice(0, n).reduce((s, g) => s + g, 0);
-    }
-    return total || 1;
-  });
-  return AXIS_MAX;
-}
-export function radarOf(answers) {
-  const T = traitsOf(answers || {});
-  const M = axisMax();
-  const ratio = AXES.map(([, ks], i) => Math.max(0, ks.reduce((s, k) => s + Math.max(0, T[k] || 0), 0)) / M[i]);
-  const top = Math.max(...ratio) || 1;
-  // racine carrée : les écarts restent visibles sans écraser les petits axes
-  return AXES.map(([label], i) => ({ label, v: Math.max(10, Math.round(Math.sqrt(ratio[i] / top) * 100)) }));
-}
-
 function rankStyles(T, mode) {
   const tn = Math.sqrt(TRAITS.reduce((s, k) => s + Math.max(0, T[k]) ** 2, 0)) || 1;
   return Object.entries(STYLES).map(([id, st]) => {
@@ -533,13 +498,48 @@ export function buildPlan(answers, profile) {
   const rythme = { explosif: 'Explosif', constant: 'Constant', patient: 'Patient' }[v(answers, 'rythme')];
   const top3 = ranked.slice(0, 3).map((r) => ({ name: STYLES[r.id].name, pct: Math.max(5, Math.round(Math.max(0, r.score) * 100)) }));
 
+  // Arbre de décision : 1 → 2 → 4 (si ça passe / si ça bloque)
+  const ENTRY = { tirer: 'Tirer la garde', lutte: 'Amenée au sol', judo: 'Projection', attendre: 'Attendre et contrer' };
+  const short = (t) => {
+    let x = String(t).split(/,| ou | puis | avant | pour | dès /)[0].trim();
+    if (x.length > 28) x = x.split(/ et /)[0].trim();
+    if (x.length > 34) x = x.slice(0, 34).replace(/\s+\S*$/, '') + '…';
+    return x.charAt(0).toUpperCase() + x.slice(1);
+  };
+  const finishFor = (m, skip) => (ok.find((f) => m.subs.includes(f.id) && f.id !== skip) || ok.find((f) => f.id !== skip) || null);
+  const fA = finishFor(main);
+  const fB = finishFor(alt, fA && fA.id);
+  const cA = main.counters[0];
+  const cB = alt.counters[0];
+  const altSteps = stepsOf(alt);
+  // Le départ doit mener à la position clé : on tire la garde pour jouer dessous, on amène au sol pour jouer dessus.
+  let entry = debout;
+  if (main.kind === 'guard' && (debout === 'lutte' || debout === 'judo')) entry = 'tirer';
+  if (main.kind === 'pass' && debout === 'tirer') entry = 'lutte';
+  const E = STAND[entry];
+  const tree = {
+    label: ENTRY[entry] || E.label, detail: E.steps.slice(0, 2).join(' '),
+    kids: [
+      { tag: 'Ça passe', ok: true, label: main.name, detail: `${main.key}. ${steps[0]}`,
+        kids: [
+          { tag: 'Ça passe', ok: true, label: fA ? fA.name : 'Ta finition', detail: steps[2] || steps[1] },
+          { tag: cA[0], ok: false, label: short(cA[1]), detail: `${cA[0]} : ${lower(cA[1])}.` },
+        ] },
+      { tag: 'Ça bloque', ok: false, label: alt.name, detail: `Plan B. ${altSteps[0]}`,
+        kids: [
+          { tag: 'Ça passe', ok: true, label: fB ? fB.name : short(altSteps[2] || altSteps[1]), detail: altSteps[2] || altSteps[1] },
+          { tag: cB[0], ok: false, label: short(cB[1]), detail: `${cB[0]} : ${lower(cB[1])}.` },
+        ] },
+    ],
+  };
+
   return {
     v: 3,
     at: Date.now(),
     mode,
     fed,
     style: { id: ranked[0].id, name: A.name, pitch: A.pitch },
-    radar: radarOf(answers),
+    tree,
     why,
     top3,
     tags: [tenue === 'both' ? 'Gi et No-Gi' : mode === 'nogi' ? 'No-Gi' : 'Gi', role, rythme, fed ? REF_BY_ID[fed].short : null].filter(Boolean),

@@ -1,8 +1,8 @@
 // Mon jeu : questionnaire à choix (avec « Autre »), puis la stratégie calculée par l'appli.
 
 import { state, save, profile } from '../store.js';
-import { h, fill, ICON, push, toast, day, sfx, haptic, confetti, svgEl } from '../ui.js';
-import { visibleQuestions, buildPlan, radarOf } from '../data/questionnaire.js';
+import { h, fill, ICON, push, toast, day, sfx, haptic, confetti } from '../ui.js';
+import { visibleQuestions, buildPlan } from '../data/questionnaire.js';
 import { header } from '../app.js';
 import { avatarOf } from '../people.js';
 
@@ -38,40 +38,37 @@ function acc(ic, title, body, open = false) {
   return el;
 }
 
-// Ton profil en toile d'araignée (un seul tracé, touche un axe pour sa valeur)
-function radarCard(data) {
-  const n = data.length;
-  const R = 92;
-  const ang = (i) => (-90 + (360 / n) * i) * Math.PI / 180;
-  const pt = (i, r) => [Math.cos(ang(i)) * r, Math.sin(ang(i)) * r];
-  const poly = (r) => data.map((_, i) => pt(i, r).map((x) => x.toFixed(1)).join(',')).join(' ');
-  const shape = data.map((d, i) => pt(i, (R * d.v) / 100).map((x) => x.toFixed(1)).join(',')).join(' ');
-  const best = data.reduce((a, b) => (b.v > a.v ? b : a));
-  const low = data.reduce((a, b) => (b.v < a.v ? b : a));
-  const svg = svgEl(`<svg class="radar" viewBox="-175 -138 350 276" role="img" aria-label="Ton profil : ${data.map((d) => `${d.label} ${d.v} sur 100`).join(', ')}">
-    <g class="grid">${[0.25, 0.5, 0.75, 1].map((k) => `<polygon points="${poly(R * k)}"/>`).join('')}
-      ${data.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="0" y1="0" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')}</g>
-    <g class="shape"><polygon class="area" points="${shape}"/>
-      ${data.map((d, i) => { const [x, y] = pt(i, (R * d.v) / 100); return `<circle class="dot" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`; }).join('')}</g>
-    ${data.map((d, i) => { const [x, y] = pt(i, R + 18); const anchor = Math.abs(x) < 4 ? 'middle' : x > 0 ? 'start' : 'end'; const dy = y < -R ? -2 : y > R ? 12 : 4; return `<text class="lab" data-i="${i}" x="${x.toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}">${d.label}</text>`; }).join('')}
-    ${data.map((_, i) => { const [x, y] = pt(i, R + 14); return `<circle class="hit" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="26"/>`; }).join('')}
-  </svg>`);
-  const caption = h('div', { class: 'radar-cap' });
-  const idle = () => fill(caption, h('span', null, 'Point fort : ', h('b', null, best.label)), h('span', null, 'À travailler : ', h('b', null, low.label)));
-  let sel = -1;
-  const pick = (i) => {
-    sel = sel === i ? -1 : i;
-    svg.querySelectorAll('.dot, .lab').forEach((el) => el.classList.toggle('on', Number(el.dataset.i) === sel));
-    if (sel < 0) idle(); else fill(caption, h('span', null, h('b', null, data[sel].label), ` · ${data[sel].v} sur 100`));
-    haptic('light');
+// Ton arbre de jeu : 1 → 2 → 4, comme un arbre généalogique. Touche une case pour le détail.
+function treeCard(tree) {
+  const detail = h('div', { class: 'gdetail' });
+  const all = [];
+  const show = (n, el, quiet) => {
+    all.forEach((x) => x.classList.toggle('on', !quiet && x === el));
+    fill(detail,
+      n.tag ? h('span', { class: 'gtag ' + (n.ok ? 'ok' : 'no') }, n.tag) : h('span', { class: 'gtag root' }, 'Départ'),
+      h('div', { class: 'gd-t' }, n.label),
+      h('p', null, n.detail));
+    if (!quiet) haptic('light');
   };
-  svg.addEventListener('click', (e) => { const t = e.target.closest('[data-i]'); if (t) pick(Number(t.dataset.i)); });
-  idle();
-  return h('div', { class: 'card stack radar-card' }, h('h3', null, 'Ton profil'), svg, caption);
+  const node = (n, depth) => {
+    const el = h('button', { class: `gnode d${depth}` + (n.tag ? (n.ok ? ' ok' : ' no') : ' root'), type: 'button' },
+      n.tag ? h('span', { class: 'gtag ' + (n.ok ? 'ok' : 'no') }, n.tag) : null,
+      h('span', { class: 'gl' }, n.label));
+    el.addEventListener('click', () => show(n, el));
+    all.push(el);
+    return h('li', { class: n.tag ? (n.ok ? 'b-ok' : 'b-no') : '' }, el, n.kids && n.kids.length ? h('ul', null, n.kids.map((k) => node(k, depth + 1))) : null);
+  };
+  const ul = h('ul', { class: 'gtree' }, node(tree, 0));
+  const card = h('div', { class: 'card stack tree-card' },
+    h('div', { class: 'between' }, h('h3', null, 'Ton arbre de jeu'), h('span', { class: 'gleg' }, h('i', { class: 'ok' }), 'passe', h('i', { class: 'no' }), 'bloque')),
+    ul, detail);
+  show(tree, all[0], true);
+  return card;
 }
 
 function planView(p, count, { readonly = false } = {}) {
-  const radar = p.answers ? radarOf(p.answers) : p.radar || null;
+  let tree = p.tree || null;
+  if (p.answers) { try { tree = buildPlan(p.answers, profile()).tree; } catch (e) { /* ancien plan */ } }
   const planA = Array.isArray(p.planA) ? { name: 'Ton plan A', steps: p.planA } : p.planA;
   const planB = p.planB || { name: '', steps: [] };
   return h('div', { id: 'plan', class: 'stack' },
@@ -82,7 +79,7 @@ function planView(p, count, { readonly = false } = {}) {
       p.why ? h('p', { style: { opacity: '.92', marginTop: '8px', fontWeight: '700' } }, p.why) : null,
       p.tags ? h('div', { class: 'chips' }, p.tags.map((t) => h('span', { class: 'chip static' }, t))) : null,
     ),
-    radar ? radarCard(radar) : null,
+    tree ? treeCard(tree) : null,
     p.top3 ? h('div', { class: 'card stack' },
       h('h3', null, 'Tes styles les plus proches'),
       h('div', { class: 'stack', style: { gap: '10px' } }, p.top3.map((x, i) => h('div', { class: 'hbar' },
@@ -90,7 +87,7 @@ function planView(p, count, { readonly = false } = {}) {
         h('div', { class: 'track' }, h('i', { style: { width: `${x.pct}%`, background: i === 0 ? 'var(--grad)' : 'var(--faint)', animationDelay: `${i * 90}ms` } })),
       ))),
     ) : null,
-    p.flow ? h('div', { class: 'card' },
+    p.flow && !tree ? h('div', { class: 'card' },
       h('h3', { style: { marginBottom: '12px' } }, 'Ton arbre de jeu'),
       h('div', { class: 'flow' }, p.flow.map((n, i) => h('div', { class: 'node' + (n.key ? ' key' : '') }, h('span', { class: 'dot' }, i + 1), h('div', null, h('div', { class: 't' }, n.t), h('div', { class: 's' }, n.s))))),
     ) : null,

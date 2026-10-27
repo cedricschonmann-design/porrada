@@ -450,22 +450,43 @@ button.rowc:active { transform: scale(.98); background: var(--glass-2); }
 .page-title { font-size: 30px; margin: 4px 2px 16px; }
 .page-sub { color: var(--muted); margin: -10px 2px 18px; font-size: 15px; }
 
-/* ---------- Toile d'araignée du profil ---------- */
-.radar-card { gap: 6px; }
-.radar { width: 100%; max-width: 380px; margin: 0 auto; display: block; overflow: visible; -webkit-tap-highlight-color: transparent; }
-.radar .grid polygon, .radar .grid line { fill: none; stroke: var(--line); stroke-width: 1; }
-.radar .grid polygon:last-of-type { stroke: var(--faint); }
-.radar .area { fill: var(--c-give); fill-opacity: .2; stroke: var(--c-give); stroke-width: 2; stroke-linejoin: round; }
-.radar .shape { transform-origin: 0 0; animation: radarIn .7s var(--ease) both; }
-@keyframes radarIn { from { transform: scale(.2); opacity: 0; } }
-.radar .dot { fill: var(--c-give); stroke: var(--bg); stroke-width: 2; }
-.radar .dot { transform-box: fill-box; transform-origin: center; transition: transform .2s var(--ease); }
-.radar .dot.on { transform: scale(1.7); }
-.radar .lab { fill: var(--ink-2); font-size: 13px; font-weight: 650; font-family: inherit; }
-.radar .lab.on { fill: var(--ink); font-weight: 800; }
-.radar .hit { fill: transparent; cursor: pointer; }
-.radar-cap { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); min-height: 20px; text-align: center; }
-.radar-cap b { color: var(--ink); }
+/* ---------- Arbre de jeu (1 → 2 → 4) ---------- */
+.tree-card { gap: 10px; }
+.gleg { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 650; }
+.gleg i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; margin-left: 6px; }
+.gleg i.ok { background: var(--green); }
+.gleg i.no { background: var(--c-take); }
+.gtree, .gtree ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; position: relative; }
+.gtree ul { padding-top: 16px; }
+.gtree li { flex: 1 1 0; min-width: 0; position: relative; padding: 16px 3px 0; display: flex; flex-direction: column; align-items: center; }
+.gtree > li { padding-top: 0; }
+/* traits : la tige du parent, puis une branche vers chaque enfant */
+.gtree ul::before { content: ''; position: absolute; top: 0; left: 50%; height: 16px; border-left: 2px solid var(--faint); }
+.gtree li.b-ok::after, .gtree li.b-no::after { content: ''; position: absolute; top: 0; height: 16px; width: 50%; }
+.gtree li.b-ok::after { right: 0; border-top: 2px solid var(--green); border-left: 2px solid var(--green); border-top-left-radius: 10px; left: 50%; }
+.gtree li.b-no::after { left: 0; border-top: 2px solid var(--c-take); border-right: 2px solid var(--c-take); border-top-right-radius: 10px; width: calc(50% + 1px); }
+.gnode {
+  appearance: none; width: 100%; min-width: 0; display: grid; justify-items: center; gap: 4px;
+  padding: 9px 5px; border-radius: 14px; background: var(--glass-2); border: 1px solid var(--line); color: var(--ink);
+  font-weight: 750; font-size: 13px; line-height: 1.2; text-align: center; transition: transform .16s var(--ease), border-color .2s;
+}
+.gnode:active { transform: scale(.96); }
+.gnode .gl { overflow-wrap: anywhere; hyphens: auto; }
+.gnode.root { width: auto; min-width: 58%; padding: 11px 16px; background: var(--grad); color: #fff; border-color: transparent; font-size: 15px; }
+.gnode.d1 { font-size: 14px; }
+.gnode.d2 { font-size: 12.5px; padding: 8px 4px; }
+.gnode.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; }
+.gnode.root.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+.gtag { font-size: 10.5px; font-weight: 800; letter-spacing: .01em; padding: 2px 6px; border-radius: 6px; line-height: 1.2; max-width: 100%; overflow-wrap: anywhere; }
+.gtag.ok { color: #0b6b44; background: rgba(52, 226, 155, .22); }
+.gtag.no { color: #9a3d06; background: rgba(255, 138, 61, .2); }
+.gtag.root { color: var(--ink-2); background: var(--glass-3); }
+:root:not([data-theme="light"]) .gtag.ok { color: #6ff0bb; }
+:root:not([data-theme="light"]) .gtag.no { color: #ffb27a; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .gtag.ok { color: #0b6b44; } :root:not([data-theme="dark"]) .gtag.no { color: #9a3d06; } }
+.gdetail { display: grid; gap: 4px; justify-items: start; padding: 12px 14px; border-radius: 16px; background: var(--glass); border: 1px solid var(--hair); }
+.gdetail .gd-t { font-weight: 800; font-size: 16px; }
+.gdetail p { color: var(--ink-2); font-size: 14.5px; line-height: 1.45; }
 
 /* ---------- Clavier ouvert (classe posée par ui.js) ---------- */
 html.kb { --safe-bottom: 0px; }
