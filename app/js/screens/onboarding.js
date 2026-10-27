@@ -119,12 +119,18 @@ export function startOnboarding(onDone) {
           go(2);
         },
       }, 'Continuer'));
-      setTimeout(() => (d.email ? user : mail).focus(), 350);
     }
 
     if (step === 2) {
-      const name = h('input', { class: 'input', id: 'onb-name', autocomplete: 'given-name', placeholder: 'Ton prénom', value: d.name, maxlength: '24' });
-      const year = h('input', { class: 'input', id: 'onb-year', type: 'number', inputmode: 'numeric', placeholder: 'Par exemple 1998', value: d.birthYear || '', min: '1930', max: String(new Date().getFullYear() - 4) });
+      const name = h('input', { class: 'input', id: 'onb-name', autocomplete: 'given-name', placeholder: 'Ton prénom', value: d.name, maxlength: '24', enterkeyhint: 'next' });
+      const year = h('input', { class: 'input', id: 'onb-year', type: 'text', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '4', autocomplete: 'off', enterkeyhint: 'done', placeholder: 'Par exemple 1998', value: d.birthYear || '' });
+      name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); year.focus(); } });
+      year.addEventListener('input', () => {
+        const v = year.value.replace(/\D/g, '').slice(0, 4);
+        if (v !== year.value) year.value = v;
+        year.classList.remove('err');
+        if (v.length === 4) year.blur();
+      });
       body.append(
         h('h1', null, 'Enchanté'),
         h('p', { class: 'muted' }, 'Ton âge et ta catégorie servent aux arbitres : durée des combats, pesée, ce qui t’est interdit.'),
@@ -137,12 +143,11 @@ export function startOnboarding(onDone) {
           if (!name.value.trim()) return err(name, 'Écris ton prénom.');
           const y = Number(year.value);
           const now = new Date().getFullYear();
-          if (year.value && (y < 1930 || y > now - 4)) return err(year, 'Année de naissance à vérifier.');
+          if (year.value && (year.value.length !== 4 || y < 1930 || y > now - 4)) return err(year, `Écris ton année de naissance en 4 chiffres, entre 1930 et ${now - 4}.`);
           d.name = name.value.trim(); d.birthYear = year.value ? y : null;
           go(3);
         },
       }, 'Continuer'));
-      setTimeout(() => name.focus(), 350);
     }
 
     if (step === 3) {
@@ -152,7 +157,7 @@ export function startOnboarding(onDone) {
       }, belt(v, 0), l)));
       drawBelts();
       const acad = h('input', { class: 'input', placeholder: 'Facultatif', value: d.academy, maxlength: '40', autocomplete: 'organization' });
-      const kg = h('input', { class: 'input', type: 'number', inputmode: 'decimal', placeholder: 'Facultatif, en kg', value: d.weight || '', step: '0.1', min: '20', max: '250' });
+      const kg = h('input', { class: 'input', type: 'text', inputmode: 'decimal', autocomplete: 'off', enterkeyhint: 'done', placeholder: 'Facultatif, en kg', value: d.weight ? String(d.weight).replace('.', ',') : '' });
       body.append(
         h('h1', null, 'Ta pratique'),
         h('div', { class: 'field' }, h('span', null, 'Ceinture'), chips),

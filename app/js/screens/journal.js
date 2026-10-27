@@ -296,74 +296,12 @@ function subCounter(entries, mode, k, onChange) {
   return el;
 }
 
-// ---------- Note rapide sur l'écran verrouillé ----------
-// Une appli web ne peut pas avoir de widget : on utilise les commandes « musique » de l'écran
-// verrouillé (précédent / suivant) pendant le cours, grâce à un son silencieux qui tourne en boucle.
-const lockNotes = {
-  audio: null, url: null, active: false, onHit: null,
-  supported() { return 'mediaSession' in navigator && typeof Audio !== 'undefined'; },
-  silent() {
-    if (this.url) return this.url;
-    const rate = 8000; const n = rate * 8;
-    const buf = new ArrayBuffer(44 + n); const v = new DataView(buf);
-    const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
-    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-    v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
-    new Uint8Array(buf, 44).fill(128);
-    this.url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-    return this.url;
-  },
-  async start(onHit) {
-    if (!this.supported()) return false;
-    this.onHit = onHit;
-    try {
-      if (!this.audio) { this.audio = new Audio(this.silent()); this.audio.loop = true; this.audio.setAttribute('playsinline', ''); }
-      await this.audio.play();
-      const ms = navigator.mediaSession;
-      ms.setActionHandler('nexttrack', () => this.onHit && this.onHit('given'));
-      ms.setActionHandler('previoustrack', () => this.onHit && this.onHit('received'));
-      try { ms.setActionHandler('seekforward', null); ms.setActionHandler('seekbackward', null); } catch (e) { /* pas grave */ }
-      ms.setActionHandler('play', () => this.audio && this.audio.play());
-      ms.setActionHandler('pause', () => { if (this.audio) this.audio.play(); });
-      this.active = true;
-      this.update();
-      return true;
-    } catch (e) {
-      this.active = false;
-      return false;
-    }
-  },
-  update() {
-    if (!this.active || !state.course) return;
-    const c = state.course;
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${c.given.length} placée${c.given.length > 1 ? 's' : ''} · ${c.received.length} subie${c.received.length > 1 ? 's' : ''}`,
-        artist: 'Suivant : j’ai soumis · Précédent : j’ai été soumis',
-        album: `PORRADA · cours ${c.mode === 'nogi' ? 'No-Gi' : 'Gi'}`,
-        artwork: [{ src: 'icons/star-512.png', sizes: '512x512', type: 'image/png' }],
-      });
-      navigator.mediaSession.playbackState = 'playing';
-    } catch (e) { /* pas grave */ }
-  },
-  stop() {
-    this.active = false;
-    try { if (this.audio) this.audio.pause(); } catch (e) { /* rien */ }
-    try {
-      const ms = navigator.mediaSession;
-      ['nexttrack', 'previoustrack', 'play', 'pause'].forEach((a) => ms.setActionHandler(a, null));
-      ms.metadata = null;
-    } catch (e) { /* rien */ }
-  },
-};
-
-function addHit(k, { silent = false } = {}) {
+function addHit(k) {
   const c = state.course;
   if (!c) return;
   c[k].push({ sub: null, at: Date.now() });
   save();
-  lockNotes.update();
-  if (!silent) { sfx(k === 'given' ? 'give' : 'take'); haptic('medium'); }
+  sfx(k === 'given' ? 'give' : 'take'); haptic('medium');
 }
 
 function openCourse() {
@@ -375,7 +313,6 @@ function openCourse() {
     const wrap = h('div', { id: 'course' });
     const elapsed = h('span', { class: 'num' }, '0:00');
     const timerBox = h('div');
-    const lockBox = h('div');
     let lastPhase = null;
     const draw = () => {
       if (!c()) return;
@@ -388,13 +325,11 @@ function openCourse() {
           h('button', { class: 'hit take', id: 'hit-take', 'aria-label': `J’ai été soumis, ${c().received.length}`, onclick: () => hit('received') }, h('span', { html: ICON.flag, style: { display: 'contents' } }), h('span', { class: 'n' }, c().received.length), 'J’ai été soumis'),
         ),
         h('p', { class: 'small muted center', style: { margin: '10px 4px 0' } }, 'Un appui = une soumission. Tu préciseras lesquelles à la fin du cours.'),
-        h('div', { style: { marginTop: '12px' } }, lockBox),
         h('div', { style: { marginTop: '12px' } }, timerBox),
         h('div', { style: { marginTop: '12px' } }, lastLine()),
         h('button', { class: 'btn lg block', id: 'end-course', style: { marginTop: '16px' }, onclick: endCourse }, h('span', { html: ICON.stop, style: { display: 'contents' } }), 'Terminer le cours'),
       );
       drawTimer();
-      drawLock();
     };
     const lastLine = () => {
       const all = [...c().given.map((x) => ({ ...x, k: 'given' })), ...c().received.map((x) => ({ ...x, k: 'received' }))].sort((a, b) => b.at - a.at);
@@ -407,7 +342,7 @@ function openCourse() {
             const arr = c()[l.k];
             const i = arr.findIndex((x) => x.at === l.at);
             if (i >= 0) arr.splice(i, 1);
-            save(); lockNotes.update(); draw(); sfx('del');
+            save(); draw(); sfx('del');
           },
         }, 'Annuler'),
       );
@@ -417,19 +352,6 @@ function openCourse() {
       draw();
       const n = document.querySelector(k === 'given' ? '#hit-give .n' : '#hit-take .n');
       if (n) n.classList.add('bump');
-    };
-    const drawLock = () => {
-      if (!lockNotes.supported()) { fill(lockBox); return; }
-      fill(lockBox, h('div', { class: 'card', id: 'lock-card', style: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px' } },
-        h('span', { class: 'iconbtn', style: { background: lockNotes.active ? 'var(--green)' : 'var(--glass-3)', color: lockNotes.active ? '#000' : 'inherit', border: '0' }, html: ICON.lock }),
-        h('div', { style: { flex: '1 1 0', minWidth: '0', textAlign: 'left' } },
-          h('b', null, lockNotes.active ? 'Note rapide activée' : 'Note rapide écran verrouillé'),
-          h('div', { class: 'small muted', style: { marginTop: '2px' } }, lockNotes.active ? 'Bouton suivant : j’ai soumis. Précédent : j’ai été soumis.' : 'Note sans déverrouiller, avec les boutons musique.'),
-        ),
-        lockNotes.active
-          ? h('button', { class: 'btn sm', onclick: () => { lockNotes.stop(); drawLock(); } }, 'Couper')
-          : h('button', { class: 'btn sm', id: 'lock-on', onclick: async () => { const ok = await lockNotes.start((k) => { addHit(k, { silent: true }); draw(); }); if (!ok) toast('Impossible ici : utilise les gros boutons.'); drawLock(); } }, 'Activer'),
-      ));
     };
     // Minuteur de rounds avec repos, en boucle
     const drawTimer = () => {
@@ -517,7 +439,6 @@ function openEnd(coursePage) {
           const minutes = Math.max(1, Math.round((Date.now() - cc.start) / 60000));
           state.journal.push({ id: cc.id, start: cc.start, minutes, mode: cc.mode, given: cc.given, received: cc.received, note: note.trim(), feel, partners: [...partners] });
           state.course = null;
-          lockNotes.stop();
           save();
           page.close({ silent: true });
           coursePage.close({ silent: true });
@@ -530,7 +451,7 @@ function openEnd(coursePage) {
       h('button', {
         class: 'btn ghost block', onclick: async () => {
           if (!(await ask('Abandonner ce cours ?', 'Il ne sera pas enregistré dans ton journal.', 'Abandonner', { danger: true }))) return;
-          state.course = null; lockNotes.stop(); save(); page.close({ silent: true }); coursePage.close();
+          state.course = null; save(); page.close({ silent: true }); coursePage.close();
         },
       }, 'Ne pas enregistrer'),
     );

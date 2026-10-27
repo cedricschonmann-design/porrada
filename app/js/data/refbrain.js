@@ -7,29 +7,24 @@ import { REF_BY_ID, answer as topicAnswer, findSub, KEYWORDS, forMe, isYouth, IB
 
 export const CHARS = {
   ibjjf: {
-    name: 'Paulo', line: 'Précis, à cheval sur le règlement.',
+    name: 'Paulo',
     grad: 'linear-gradient(135deg,#2d5bff,#8a5cff)',
-    hello: 'Bom dia ! Moi c’est Paulo, arbitre IBJJF. Demande-moi tout : points, durée, pesée, ta catégorie, ce qui t’est interdit à ta ceinture.',
   },
   adcc: {
-    name: 'Sami', line: 'Direct. Ici, on cherche la soumission.',
+    name: 'Sami',
     grad: 'linear-gradient(135deg,#ff8a3d,#ff3d6e)',
-    hello: 'Salut, Sami, arbitre ADCC. Chez moi pas de points au début et je punis ceux qui tirent la garde. Vas-y, pose ta question.',
   },
   ajp: {
-    name: 'Leïla', line: 'Calme, elle va droit au but.',
+    name: 'Leïla',
     grad: 'linear-gradient(135deg,#1fbf8f,#2d7dff)',
-    hello: 'Bonjour, je suis Leïla, arbitre AJP. Grand Slam, World Pro : pas d’avantages chez nous, chaque action vaut un point. Je t’écoute.',
   },
   naga: {
-    name: 'Mike', line: 'Sympa, il connaît chaque niveau par cœur.',
+    name: 'Mike',
     grad: 'linear-gradient(135deg,#ff4fa3,#c04dff)',
-    hello: 'Hey ! Mike, arbitre NAGA. Gi, No-Gi, débutant ou expert : dis-moi ce que tu veux savoir.',
   },
   gi: {
-    name: 'Jess', line: 'Organisée, la reine des poules.',
+    name: 'Jess',
     grad: 'linear-gradient(135deg,#ffb23d,#ff6a3d)',
-    hello: 'Salut, c’est Jess, arbitre Grappling Industries. Ici tu combats en poule, plusieurs combats garantis. Une question ?',
   },
 };
 
@@ -117,6 +112,7 @@ function positionAnswer(ref, q, p, mode) {
 // ---------- Situations ----------
 const SITUATIONS = [
   {
+    id: 'tirer', q: 'Tirer la garde ?',
     kw: ['tirer la garde', 'tire la garde', 'pull guard', 'pull'],
     a: {
       ibjjf: () => ({ title: 'Tirer la garde : oui', verdict: true, lines: ['C’est autorisé, mais prends d’abord une prise sur ton adversaire : tirer la garde sans prise est pénalisé.', 'Sauter en garde fermée, c’est autre chose : demande-moi « sauter en garde ».'] }),
@@ -124,6 +120,7 @@ const SITUATIONS = [
     },
   },
   {
+    id: 'sauter', q: 'Sauter en garde ?',
     kw: ['sauter en garde', 'saute en garde', 'jump guard', 'sauter garde', 'sauter'],
     a: {
       ibjjf: (p, mode) => {
@@ -135,39 +132,47 @@ const SITUATIONS = [
     },
   },
   {
+    id: 'slam', q: 'Le slam ?',
     kw: ['slam', 'souleve', 'soulever', 'ecraser au sol'],
     a: { all: (p, mode, ref) => ({ title: 'Slam : non', verdict: false, lines: [`Soulever l’adversaire et l’écraser au sol est interdit en ${ref.short}, quelle que soit ta ceinture.`, 'S’il te soulève dans ta garde, ouvre-la ou lâche la prise.'] }) },
   },
   {
+    id: 'doigts', q: 'Doigts dans les manches ?',
     kw: ['doigts dans', 'dans la manche', 'dans les manches', 'dans le pantalon'],
     a: { ibjjf: () => ({ title: 'Doigts dans les manches : non', verdict: false, lines: ['Mettre tes doigts à l’intérieur de sa manche ou de son pantalon est une faute : pénalité.', 'Tiens le tissu par l’extérieur.'] }) },
   },
   {
+    id: 'agripper', q: 'Agripper sa tenue ?',
     kw: ['agripper le short', 'attraper le short', 'tenir le short', 'tirer le short', 'agripper le rash', 'tenir le rash', 'attraper le rash', 'le t-shirt', 'sa tenue'],
     a: {
       adcc: () => ({ title: 'Agripper sa tenue : non', verdict: false, lines: ['Interdit d’agripper le t-shirt ou le short de l’adversaire.'] }),
-      ibjjf: (p, mode) => (mode === 'nogi' ? { title: 'Agripper sa tenue en No-Gi : non', verdict: false, lines: ['En No-Gi, tu ne peux pas tenir son short ni son rashguard : pénalité.'] } : null),
+      ibjjf: (p, mode) => (mode === 'nogi' ? { title: 'Agripper sa tenue en No-Gi : non', verdict: false, lines: ['En No-Gi, tu ne peux pas tenir son short ni son rashguard : pénalité.'] } : { title: 'Agripper le kimono : oui', verdict: true, lines: ['En Gi, tu peux saisir le col, les manches et le pantalon.', 'Mais jamais les doigts à l’intérieur de la manche ou du pantalon.'] }),
     },
   },
   {
+    id: 'sortir', q: 'Sortir du tapis ?',
     kw: ['sortir du tapis', 'sortir de la zone', 'sors du tapis', 'fuir', 'hors de la zone', 'sortie de zone'],
     a: { ibjjf: () => ({ title: 'Sortir pour fuir : sanctionné', verdict: false, lines: ['Sortir de la zone de combat pour échapper à une position ou à une soumission est sanctionné, jusqu’à la disqualification.', 'Si vous sortez sans le faire exprès, je vous arrête et vous replace au centre.'] }) },
   },
   {
+    id: 'abandon', q: 'Comment abandonner ?',
     kw: ['abandon', ' taper', ' tape ', ' tap ', ' crier', ' cri '],
     a: { all: () => ({ title: 'Abandonner', verdict: null, lines: ['Tu tapes avec la main ou le pied sur l’adversaire ou le tapis, ou tu dis que tu abandonnes.', 'Si tu cries de douleur dans une soumission, je peux arrêter le combat : ça compte comme un abandon.', 'Tape tôt : une articulation, ça ne se rattrape pas.'] }) },
   },
   {
+    id: 'hygiene', q: 'Ongles, cheveux, bijoux',
     kw: ['ongle', 'cheveux', 'bijou', 'alliance', 'bague', 'piercing', 'lunettes', 'hygiene'],
     a: { all: (p, mode, ref) => ({ title: 'Hygiène et objets', verdict: null, lines: ['Ongles des mains et des pieds coupés court.', 'Cheveux longs attachés avec un élastique souple.', 'Pas de bijoux, de bagues ni de piercings, et rien de dur sur toi.', ref.id === 'gi' ? 'Lunettes, coquille et protège-oreilles interdits en No-Gi chez Grappling Industries.' : null].filter(Boolean) }) },
   },
   {
+    id: 'age', q: 'Les catégories d’âge',
     kw: ['master', ' age ', ' ans ', 'categorie d age', 'categories d age'],
     a: {
       ibjjf: (p) => ({ title: 'Les catégories d’âge', table: [['Juvéniles', '16-17 ans'], ['Adultes', '18 ans et +'], ['Master 1', '30 ans et +'], ['Master 2', '36 ans et +'], ['Master 3', '41 ans et +'], ['Master 4', '46 ans et +'], ['Master 5', '51 ans et +'], ['Master 6', '56 ans et +'], ['Master 7', '61 ans et +']], lines: ['C’est l’année de naissance qui compte.', p.age === 'master' ? 'Tu peux aussi t’inscrire chez les adultes.' : null].filter(Boolean) }),
     },
   },
   {
+    id: 'kani', q: 'Le ciseau (kani basami) ?',
     kw: ['kani', 'ciseau', 'scissor'],
     a: {
       ibjjf: () => ({ title: 'Ciseau (kani basami) : non', verdict: false, lines: ['Interdit en IBJJF pour toutes les ceintures.'] }),
@@ -175,6 +180,7 @@ const SITUATIONS = [
     },
   },
   {
+    id: 'reap', q: 'Le reaping ?',
     kw: ['reaping', 'reap'],
     a: {
       ibjjf: (p, mode) => {
@@ -195,6 +201,21 @@ function situationAnswer(ref, q, p, mode) {
     if (r) return { follow: ['Les pénalités', 'Ce qui m’est interdit'], ...r };
   }
   return null;
+}
+
+// Questions toutes prêtes pour un arbitre
+export function situationsFor(ref) {
+  return SITUATIONS.filter((x) => x.a[ref.id] || x.a.all).map((x) => [x.id, x.q]);
+}
+export function situationReply(ref, id, p, mode) {
+  const x = SITUATIONS.find((y) => y.id === id);
+  const fn = x && (x.a[ref.id] || x.a.all);
+  const r = fn && fn(p, mode, ref);
+  return r ? { follow: ['Les pénalités', 'Ce qui m’est interdit'], ...r } : { title: 'Pas de règle particulière', verdict: null, lines: [`Rien de spécial à ce sujet chez ${ref.short}${mode === 'nogi' ? ' en No-Gi' : ' en Gi'}.`] };
+}
+export const POSITIONS = POS.map(([, label]) => label);
+export function positionReply(ref, label, p, mode) {
+  return positionAnswer(ref, ' combien vaut ' + norm(label) + ' ', p, mode);
 }
 
 // ---------- Point d'entrée ----------

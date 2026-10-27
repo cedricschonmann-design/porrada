@@ -1,8 +1,8 @@
 // Mon jeu : questionnaire à choix (avec « Autre »), puis la stratégie calculée par l'appli.
 
 import { state, save, profile } from '../store.js';
-import { h, fill, ICON, push, toast, day, sfx, haptic, confetti } from '../ui.js';
-import { visibleQuestions, buildPlan } from '../data/questionnaire.js';
+import { h, fill, ICON, push, toast, day, sfx, haptic, confetti, svgEl } from '../ui.js';
+import { visibleQuestions, buildPlan, radarOf } from '../data/questionnaire.js';
 import { header } from '../app.js';
 import { avatarOf } from '../people.js';
 
@@ -38,7 +38,40 @@ function acc(ic, title, body, open = false) {
   return el;
 }
 
+// Ton profil en toile d'araignée (un seul tracé, touche un axe pour sa valeur)
+function radarCard(data) {
+  const n = data.length;
+  const R = 92;
+  const ang = (i) => (-90 + (360 / n) * i) * Math.PI / 180;
+  const pt = (i, r) => [Math.cos(ang(i)) * r, Math.sin(ang(i)) * r];
+  const poly = (r) => data.map((_, i) => pt(i, r).map((x) => x.toFixed(1)).join(',')).join(' ');
+  const shape = data.map((d, i) => pt(i, (R * d.v) / 100).map((x) => x.toFixed(1)).join(',')).join(' ');
+  const best = data.reduce((a, b) => (b.v > a.v ? b : a));
+  const low = data.reduce((a, b) => (b.v < a.v ? b : a));
+  const svg = svgEl(`<svg class="radar" viewBox="-175 -138 350 276" role="img" aria-label="Ton profil : ${data.map((d) => `${d.label} ${d.v} sur 100`).join(', ')}">
+    <g class="grid">${[0.25, 0.5, 0.75, 1].map((k) => `<polygon points="${poly(R * k)}"/>`).join('')}
+      ${data.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="0" y1="0" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')}</g>
+    <g class="shape"><polygon class="area" points="${shape}"/>
+      ${data.map((d, i) => { const [x, y] = pt(i, (R * d.v) / 100); return `<circle class="dot" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`; }).join('')}</g>
+    ${data.map((d, i) => { const [x, y] = pt(i, R + 18); const anchor = Math.abs(x) < 4 ? 'middle' : x > 0 ? 'start' : 'end'; const dy = y < -R ? -2 : y > R ? 12 : 4; return `<text class="lab" data-i="${i}" x="${x.toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}">${d.label}</text>`; }).join('')}
+    ${data.map((_, i) => { const [x, y] = pt(i, R + 14); return `<circle class="hit" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="26"/>`; }).join('')}
+  </svg>`);
+  const caption = h('div', { class: 'radar-cap' });
+  const idle = () => fill(caption, h('span', null, 'Point fort : ', h('b', null, best.label)), h('span', null, 'À travailler : ', h('b', null, low.label)));
+  let sel = -1;
+  const pick = (i) => {
+    sel = sel === i ? -1 : i;
+    svg.querySelectorAll('.dot, .lab').forEach((el) => el.classList.toggle('on', Number(el.dataset.i) === sel));
+    if (sel < 0) idle(); else fill(caption, h('span', null, h('b', null, data[sel].label), ` · ${data[sel].v} sur 100`));
+    haptic('light');
+  };
+  svg.addEventListener('click', (e) => { const t = e.target.closest('[data-i]'); if (t) pick(Number(t.dataset.i)); });
+  idle();
+  return h('div', { class: 'card stack radar-card' }, h('h3', null, 'Ton profil'), svg, caption);
+}
+
 function planView(p, count, { readonly = false } = {}) {
+  const radar = p.answers ? radarOf(p.answers) : p.radar || null;
   const planA = Array.isArray(p.planA) ? { name: 'Ton plan A', steps: p.planA } : p.planA;
   const planB = p.planB || { name: '', steps: [] };
   return h('div', { id: 'plan', class: 'stack' },
@@ -49,6 +82,7 @@ function planView(p, count, { readonly = false } = {}) {
       p.why ? h('p', { style: { opacity: '.92', marginTop: '8px', fontWeight: '700' } }, p.why) : null,
       p.tags ? h('div', { class: 'chips' }, p.tags.map((t) => h('span', { class: 'chip static' }, t))) : null,
     ),
+    radar ? radarCard(radar) : null,
     p.top3 ? h('div', { class: 'card stack' },
       h('h3', null, 'Tes styles les plus proches'),
       h('div', { class: 'stack', style: { gap: '10px' } }, p.top3.map((x, i) => h('div', { class: 'hbar' },
@@ -148,7 +182,7 @@ function quiz(prev) {
             if (!many) a.v = show ? '__other' : null;
             if (!show) { a.other = ''; ta.value = ''; }
             drawOpts(); refresh();
-            if (show) setTimeout(() => ta.focus(), 50);
+            if (show) ta.focus({ preventScroll: true });
           },
         }, h('span', { class: 'grow' }, 'Autre', h('span', { class: 'd' }, 'Écris ta propre réponse')), h('span', { class: 'mark', html: ICON.check })),
       );

@@ -195,6 +195,35 @@ export function sfx(name) {
 
 // ---------- Vibrations (iPhone : astuce de l'interrupteur iOS 18) ----------
 let hapLabel = null;
+// ---------- Clavier (iPhone) ----------
+// L'iPhone ne redimensionne pas l'appli quand le clavier sort : on cale nous-mêmes les pages et les
+// panneaux sur la partie visible de l'écran, pour que le champ et son bouton restent juste au-dessus.
+(function watchKeyboard() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const root = document.documentElement;
+  let raf = 0;
+  const fit = () => {
+    raf = 0;
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    const open = kb > 80;
+    root.style.setProperty('--vvt', Math.max(0, Math.round(vv.offsetTop)) + 'px');
+    root.style.setProperty('--kb', open ? kb + 'px' : '0px');
+    root.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+    root.classList.toggle('kb', open);
+    if (open) {
+      const a = document.activeElement;
+      if (a && a.scrollIntoView && /INPUT|TEXTAREA/.test(a.tagName) && a.closest('.page, .sheet') && !a.closest('.composer')) {
+        setTimeout(() => a.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
+      }
+    }
+  };
+  const queue = () => { if (!raf) raf = requestAnimationFrame(fit); };
+  vv.addEventListener('resize', queue);
+  vv.addEventListener('scroll', queue);
+  fit();
+})();
+
 export function haptic(kind = 'light') {
   if (prefs.haptics === false) return;
   try {

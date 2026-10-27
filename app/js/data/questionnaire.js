@@ -352,6 +352,41 @@ function traitsOf(answers) {
   return T;
 }
 
+// Le profil en toile d'araignée : 8 axes lisibles, chacun regroupe des traits proches.
+const AXES = [
+  ['Garde', ['guard']],
+  ['Jambes', ['legs']],
+  ['Mobilité', ['mobility', 'flex']],
+  ['Patience', ['patience', 'counter']],
+  ['Physique', ['explo', 'cardio', 'force']],
+  ['Debout', ['wrestle', 'throws']],
+  ['Dessus', ['top', 'pressure']],
+  ['Dos', ['back']],
+];
+// Score maximum possible sur chaque axe (meilleures réponses à chaque question)
+let AXIS_MAX = null;
+function axisMax() {
+  if (AXIS_MAX) return AXIS_MAX;
+  AXIS_MAX = AXES.map(([, ks]) => {
+    let total = 0;
+    for (const q of QUESTIONS) {
+      const gains = q.opts.map((o) => ks.reduce((s, k) => s + Math.max(0, (o.t || {})[k] || 0), 0)).sort((a, b) => b - a);
+      const n = q.type === 'many' ? (q.max || 2) : 1;
+      total += gains.slice(0, n).reduce((s, g) => s + g, 0);
+    }
+    return total || 1;
+  });
+  return AXIS_MAX;
+}
+export function radarOf(answers) {
+  const T = traitsOf(answers || {});
+  const M = axisMax();
+  const ratio = AXES.map(([, ks], i) => Math.max(0, ks.reduce((s, k) => s + Math.max(0, T[k] || 0), 0)) / M[i]);
+  const top = Math.max(...ratio) || 1;
+  // racine carrée : les écarts restent visibles sans écraser les petits axes
+  return AXES.map(([label], i) => ({ label, v: Math.max(10, Math.round(Math.sqrt(ratio[i] / top) * 100)) }));
+}
+
 function rankStyles(T, mode) {
   const tn = Math.sqrt(TRAITS.reduce((s, k) => s + Math.max(0, T[k]) ** 2, 0)) || 1;
   return Object.entries(STYLES).map(([id, st]) => {
@@ -504,6 +539,7 @@ export function buildPlan(answers, profile) {
     mode,
     fed,
     style: { id: ranked[0].id, name: A.name, pitch: A.pitch },
+    radar: radarOf(answers),
     why,
     top3,
     tags: [tenue === 'both' ? 'Gi et No-Gi' : mode === 'nogi' ? 'No-Gi' : 'Gi', role, rythme, fed ? REF_BY_ID[fed].short : null].filter(Boolean),

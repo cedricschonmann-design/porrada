@@ -75,8 +75,10 @@ export function showMyCode() {
 
 // ---------- Champs à modifier ----------
 function editText({ title, value, placeholder, type = 'text', inputmode, prefix, validate, onSave, hint }) {
+  let input = null;
   sheet((close) => {
-    const input = h('input', { class: 'input', value: value || '', placeholder, type, inputmode, autocapitalize: type === 'email' || prefix ? 'off' : null, spellcheck: 'false' });
+    input = h('input', { class: 'input', value: value || '', placeholder, type: type === 'number' ? 'text' : type, inputmode, autocapitalize: type === 'email' || prefix ? 'off' : null, spellcheck: 'false', autocomplete: 'off', enterkeyhint: 'done' });
+    if (inputmode === 'numeric') input.addEventListener('input', () => { const v = input.value.replace(/\D/g, '').slice(0, 4); if (v !== input.value) input.value = v; });
     const err = h('div', { class: 'hint' }, hint || '');
     const ok = () => {
       const v = input.value.trim();
@@ -87,7 +89,6 @@ function editText({ title, value, placeholder, type = 'text', inputmode, prefix,
       toast('Enregistré.', { ok: true, sound: 'success' });
     };
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ok(); });
-    setTimeout(() => input.focus(), 300);
     return h('div', { class: 'stack' },
       h('h2', null, title),
       prefix ? h('div', { class: 'input-wrap' }, h('span', { class: 'prefix' }, prefix), input) : input,
@@ -95,6 +96,8 @@ function editText({ title, value, placeholder, type = 'text', inputmode, prefix,
       h('button', { class: 'btn primary lg block', onclick: ok }, 'Enregistrer'),
     );
   });
+  // Tout de suite, dans le même geste : l'iPhone ouvre alors le clavier proprement.
+  if (input) input.focus({ preventScroll: true });
 }
 
 function choose(title, options, value, onPick) {

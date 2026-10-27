@@ -34,7 +34,7 @@
   --yellow: #ffd23f;
   --grad: linear-gradient(135deg, #8a5cff 0%, #c04dff 42%, #ff4fa3 74%, #ff9a5a 100%);
   --grad-soft: linear-gradient(135deg, rgba(138, 92, 255, .32), rgba(255, 79, 163, .24) 60%, rgba(255, 154, 90, .2));
-  --glow: 0 12px 32px -10px rgba(200, 77, 255, .65);
+  --glow: 0 10px 24px -14px rgba(0, 0, 0, .55);
   --shadow: 0 18px 40px -18px rgba(0, 0, 0, .8);
   --blob-1: #6b3cff;
   --blob-2: #ff3d9a;
@@ -57,7 +57,7 @@
   --tabbar: 68px;
   --ease: cubic-bezier(.22, .8, .24, 1);
   --spring: cubic-bezier(.3, 1.35, .4, 1);
-  --blur: blur(22px) saturate(170%);
+  --blur: blur(22px);
 }
 
 @media (prefers-color-scheme: light) {
@@ -145,7 +145,8 @@ a { color: inherit; }
 .hidden { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-:focus-visible { outline: 2.5px solid var(--magenta); outline-offset: 2px; }
+:focus { outline: none; }
+@media (hover: hover) and (pointer: fine) { :focus-visible { outline: 2.5px solid var(--magenta); outline-offset: 2px; } }
 
 /* ---------- Barre d'état (l'heure, la batterie) : le contenu ne passe jamais dessous ---------- */
 body::before {
@@ -449,6 +450,31 @@ button.rowc:active { transform: scale(.98); background: var(--glass-2); }
 .page-title { font-size: 30px; margin: 4px 2px 16px; }
 .page-sub { color: var(--muted); margin: -10px 2px 18px; font-size: 15px; }
 
+/* ---------- Toile d'araignée du profil ---------- */
+.radar-card { gap: 6px; }
+.radar { width: 100%; max-width: 380px; margin: 0 auto; display: block; overflow: visible; -webkit-tap-highlight-color: transparent; }
+.radar .grid polygon, .radar .grid line { fill: none; stroke: var(--line); stroke-width: 1; }
+.radar .grid polygon:last-of-type { stroke: var(--faint); }
+.radar .area { fill: var(--c-give); fill-opacity: .2; stroke: var(--c-give); stroke-width: 2; stroke-linejoin: round; }
+.radar .shape { transform-origin: 0 0; animation: radarIn .7s var(--ease) both; }
+@keyframes radarIn { from { transform: scale(.2); opacity: 0; } }
+.radar .dot { fill: var(--c-give); stroke: var(--bg); stroke-width: 2; }
+.radar .dot { transform-box: fill-box; transform-origin: center; transition: transform .2s var(--ease); }
+.radar .dot.on { transform: scale(1.7); }
+.radar .lab { fill: var(--ink-2); font-size: 13px; font-weight: 650; font-family: inherit; }
+.radar .lab.on { fill: var(--ink); font-weight: 800; }
+.radar .hit { fill: transparent; cursor: pointer; }
+.radar-cap { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); min-height: 20px; text-align: center; }
+.radar-cap b { color: var(--ink); }
+
+/* ---------- Clavier ouvert (classe posée par ui.js) ---------- */
+html.kb { --safe-bottom: 0px; }
+html.kb .tabbar { opacity: 0; pointer-events: none; }
+html.kb .page { top: var(--vvt); bottom: var(--kb); }
+html.kb .sheet { bottom: var(--kb); max-height: calc(var(--vvh) - 16px); border-radius: 30px; }
+html.kb .backdrop { bottom: var(--kb); top: var(--vvt); }
+html.kb .onb { min-height: 0; grid-template-rows: auto auto auto; }
+
 /* ---------- Feuilles du bas ---------- */
 .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); animation: fadeIn .28s both; }
 .backdrop.closing { animation: fadeOut .26s both; }
@@ -703,7 +729,7 @@ button.av:active { transform: scale(.92); }
   transition: transform .14s var(--ease);
 }
 .hit:active { transform: scale(.95); }
-.hit.give { background: linear-gradient(150deg, #9a72ff, #5b35d6); box-shadow: 0 14px 30px -14px rgba(138, 92, 255, .8); }
+.hit.give { background: linear-gradient(150deg, #9a72ff, #5b35d6); box-shadow: var(--glow); }
 .hit.take { background: linear-gradient(150deg, #ff9a5a, #d24a14); box-shadow: 0 14px 30px -14px rgba(255, 122, 47, .7); }
 .hit .n { font-size: 56px; font-weight: 900; font-stretch: 120%; line-height: 1; font-variant-numeric: tabular-nums; }
 .hit .n.bump { animation: pop .4s var(--spring); }
@@ -810,6 +836,18 @@ button.av:active { transform: scale(.92); }
 .bubble td:last-child { text-align: right; font-weight: 800; white-space: nowrap; padding-left: 10px; }
 .bubble ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 5px; }
 .bubble .src { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.answer { gap: 10px; }
+.answer .ans-title { display: flex; align-items: center; gap: 10px; font-size: 22px; }
+.answer table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.answer td { padding: 8px 0; border-top: 1px solid var(--hair); }
+.answer td:last-child { text-align: right; font-weight: 800; white-space: nowrap; padding-left: 10px; }
+.answer ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15.5px; line-height: 1.4; }
+.answer .sub-h { font-weight: 750; margin-bottom: 4px; font-size: 14px; }
+.answer .src { font-size: 12.5px; color: var(--muted); }
+.answer .verdict { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.answer .verdict svg { width: 16px; height: 16px; stroke-width: 3; }
+.answer .verdict.yes { background: var(--green); color: #000; }
+.answer .verdict.no { background: var(--red); color: #fff; }
 .bubble .verdict { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; flex: none; font-size: 14px; }
 .bubble .verdict.yes { background: var(--green); color: #000; }
 .bubble .verdict.no { background: var(--red); color: #fff; }
@@ -851,7 +889,7 @@ button.av:active { transform: scale(.92); }
 .onb .step { align-self: center; display: grid; gap: 14px; animation: fadeUp .45s var(--ease) both; }
 .onb .step.back { animation: inL .4s var(--ease) both; }
 .onb h1 { font-size: 34px; }
-.logo-mark { width: 120px; height: 120px; border-radius: 32px; background: #000; display: grid; place-items: center; box-shadow: 0 20px 50px -18px rgba(200, 77, 255, .8), inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.logo-mark { width: 120px; height: 120px; border-radius: 32px; background: #000; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
 .logo-mark svg { width: 100%; height: 100%; }
 .logo-mark svg text { animation: appear .5s .15s var(--ease) backwards; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
