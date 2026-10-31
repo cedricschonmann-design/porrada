@@ -1,6 +1,7 @@
 // Fonctionnement hors ligne et mise à jour automatique.
 // __BUILD__ est remplacé à chaque publication : un nouveau numéro = une nouvelle version installée.
 const VERSION = 'porrada-__BUILD__';
+const SUBAPPS = ['notes/', 'coach/'];
 const FILES = [
   './',
   'index.html',
@@ -64,6 +65,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Les applis Notes et COACH (sous-dossiers) ont leur propre fonctionnement hors ligne
+  if (SUBAPPS.some((d) => url.pathname.startsWith(new URL(d, self.registration.scope).pathname))) return;
   const nav = req.mode === 'navigate';
   event.respondWith(
     fromNetwork(req, nav ? 3500 : 5000).then((res) => {

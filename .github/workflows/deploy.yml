@@ -26,7 +26,7 @@ jobs:
       - name: Numéro de version (pour la mise à jour automatique)
         run: |
           BUILD="$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          sed -i "s/__BUILD__/${BUILD}/g" app/sw.js app/js/version.js
+          find app -name sw.js -o -name version.js | xargs sed -i "s/__BUILD__/${BUILD}/g"
           echo "Version ${BUILD}"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

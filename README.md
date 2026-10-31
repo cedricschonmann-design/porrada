@@ -88,3 +88,13 @@ Le test lance un serveur local et un petit relais de test (`tests/mqtt_broker.py
 - Sur iPhone, une appli web ne peut pas avoir de widget sur l'écran verrouillé : le **mode cours** le remplace (l'appli rouvre directement dessus pendant un cours).
 - Les données d'une appli installée sur l'écran d'accueil sont séparées de celles de Safari : utilise toujours l'icône.
 - Les règles des fédérations changent : chaque réponse d'arbitre renvoie au règlement officiel.
+
+
+## Deux autres applis dans ce dépôt
+
+Même design, chacune avec son icône, ses données et son fonctionnement hors ligne :
+
+- **Notes** (`app/notes/`) : https://cedricschonmann-design.github.io/porrada/notes/ — carnets de notes avec éditeur par blocs (couleurs, polices, pictos, pastilles), semaine, séance de sport avec charges par série, suivis du jour, budget. Le contenu personnel s'importe par code de transfert (il n'est pas dans ce dépôt public).
+- **COACH** (`app/coach/`) : https://cedricschonmann-design.github.io/porrada/coach/ — séances par client (comme Notes de l'iPhone) et timer de fractionné.
+
+Tests : `tests/notes/test_app.py` et `tests/coach/test_app.py` (serveur sur le port 8765 dans `app/`).
