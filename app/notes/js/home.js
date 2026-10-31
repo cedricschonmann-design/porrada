@@ -29,6 +29,7 @@ export function render() {
         h('button', { class: 'iconbtn', 'aria-label': 'Réglages', onclick: openSettings, html: ICON.gear }))),
     installBanner(),
     importCard(),
+    backupCard(),
     todayCard(),
     h('div', { class: 'searchbar', style: { marginTop: '14px' } }, ic('search'), input),
     results,
@@ -49,6 +50,16 @@ function importCard() {
     h('div', { class: 'btns two' },
       h('button', { class: 'btn primary', id: 'import-start', onclick: transfer }, 'Coller mon code'),
       h('button', { class: 'btn', onclick: () => { state.settings.hideImport = true; save(); } }, 'Plus tard')));
+}
+
+// Rappel de sauvegarde : tes notes ne doivent dépendre d'un seul endroit.
+function backupCard() {
+  const last = state.settings.lastBackup;
+  const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
+  if (state.notes.length <= 1 || (days !== null && days < 14)) return null;
+  return h('button', { class: 'card backup-card', id: 'backup-card', onclick: openSettings },
+    h('span', { class: 'bk-t' }, days === null ? 'Sauvegarde pas encore faite' : `Dernière sauvegarde il y a ${days} jours`),
+    h('span', { class: 'bk-s' }, 'Réglages › Sauvegarder mes notes'));
 }
 
 // ---------- Aujourd'hui ----------
@@ -91,7 +102,7 @@ function todayCard() {
 }
 
 // ---------- Liste des notes ----------
-function noteCard(n) {
+function noteCard(n, i = 0) {
   const todos = n.blocks.filter((b) => b.t === 'todo');
   const done = todos.filter((b) => b.done).length;
   const firstText = n.blocks.find((b) => ['p', 'bul', 'num', 'call', 'h2', 'h3'].includes(b.t) && plain(b.h).trim());
@@ -110,7 +121,7 @@ function noteCard(n) {
   } else if (firstText) {
     metaEl = h('span', { class: 'ellipsis' }, plain(firstText.h));
   }
-  return h('button', { class: 'ncard', 'data-note': n.id, onclick: () => openNote(n.id) },
+  return h('button', { class: 'ncard', 'data-note': n.id, style: { animationDelay: `${Math.min(i, 12) * 28}ms` }, onclick: () => openNote(n.id) },
     h('span', { class: 'ntile c-' + (n.color || 'violet'), html: pic(n.icon || 'note') }),
     h('span', { class: 'nc-t' }, n.title || 'Sans titre'),
     h('span', { class: 'nc-m' }, metaEl),

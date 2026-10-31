@@ -8,7 +8,7 @@ import sys
 
 from playwright.sync_api import sync_playwright
 
-URL = 'http://localhost:8765/notes/'
+URL = 'http://localhost:8767/'
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'captures'
 # Code de transfert à importer (tes notes personnelles ne sont pas dans le dépôt)
 CODE = open(sys.argv[2]).read().strip() if len(sys.argv) > 2 else None
@@ -91,7 +91,7 @@ def main():
             # Suivi du jour depuis l'accueil
             pg.locator('#today .tval').nth(1).fill('120')
             pg.wait_for_timeout(400)
-            prot = pg.evaluate("Object.values(window.__notes.state.notes.find(n => n.title === 'Diététique').blocks.find(b => b.t === 'track').items[1].hist)")
+            prot = pg.evaluate("Object.values(window.__notes.state.notes.find(n => n.title === 'Plan alimentaire').blocks.find(b => b.t === 'track').items[1].hist)")
             check(f'[{scheme}] Protéines notées depuis l’accueil', prot == ['120'], str(prot))
 
             # Séance : charges par série

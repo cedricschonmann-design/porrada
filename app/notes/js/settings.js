@@ -32,9 +32,11 @@ export function openSettings() {
 async function backup() {
   const name = `notes-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([exportJSON()], name, { type: 'application/json' });
+  const done = () => { state.settings.lastBackup = Date.now(); save(); };
   try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Sauvegarde Notes' }); return; }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Sauvegarde Notes' }); done(); return; }
   } catch (e) { if (e && e.name === 'AbortError') return; }
+  done();
   const a = h('a', { href: URL.createObjectURL(file), download: name });
   document.body.append(a);
   a.click();
