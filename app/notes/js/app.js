@@ -1,6 +1,6 @@
 // Notes — démarrage.
 
-import { state, onChange, keepStorage } from './store.js';
+import { state, onChange, keepStorage, findLostNotes, purgeTrash, snapshot } from './store.js';
 import { fill, setPrefs, setTabTitle, openCount, unlockAudio, gradDefs } from './ui.js';
 import * as home from './home.js';
 
@@ -24,7 +24,7 @@ export function applyTheme() {
   else delete document.documentElement.dataset.theme;
   setPrefs({ sound: s.sound !== false, haptics: s.haptics !== false, timerSound: false });
   const dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#000000' : '#f3f0f8'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#0e1218' : '#eef1f4'));
 }
 
 let pending = false;
@@ -55,6 +55,11 @@ document.body.prepend(gradDefs());
 applyTheme();
 render('in-f');
 keepStorage();
+purgeTrash();
+// Stockage principal vide ou abîmé alors qu'une copie automatique existe : on propose de la restaurer.
+findLostNotes().then((copy) => { if (copy) { home.setLost(copy); render(); } }).catch(() => {});
+// Copie du jour dès l'ouverture (si des notes existent)
+setTimeout(() => { snapshot('jour').catch(() => {}); }, 1500);
 // Revenu sur l'appli un autre jour : la journée et les suivis se mettent à jour
 let lastDay = new Date().toDateString();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && new Date().toDateString() !== lastDay) { lastDay = new Date().toDateString(); if (!openCount()) render(); } });

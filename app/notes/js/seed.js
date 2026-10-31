@@ -1,7 +1,5 @@
-// Contenu de départ (neutre) : des carnets vides et une note qui montre tout ce qu'on peut faire.
+// Contenu de départ (neutre) : des carnets vides et une note qui montre comment tout marche.
 // Tes vraies notes ne sont pas dans le code : elles arrivent par un code de transfert (Réglages).
-
-const pic = (i, c) => `<span class="pic" data-i="${i}" data-c="${c}"></span>`;
 
 export function seed(rid) {
   const B = { planning: rid(), sport: rid(), etudes: rid(), finances: rid(), objectifs: rid() };
@@ -17,18 +15,16 @@ export function seed(rid) {
       { id: B.objectifs, name: 'Objectifs', icon: 'target', color: 'yellow' },
     ],
     notes: [{
-      id: rid(), book: B.planning, title: 'Bienvenue', icon: 'sparkles', color: 'violet', pinned: true, createdAt: now, updatedAt: now,
+      id: rid(), book: B.planning, title: 'Bienvenue', icon: 'sparkles', color: 'blue', pinned: true, createdAt: now, updatedAt: now,
       blocks: [
-        b('call', { h: 'Touche un texte pour l’écrire. La barre en bas te donne le <b>gras</b>, les <span class="c-orange">couleurs</span>, les pictos et les pastilles.', c: 'violet', i: 'info' }),
-        b('h2', { h: `${pic('list-check', 'green')} Des cases` }),
-        b('todo', { h: 'Une chose à faire', done: true }),
+        b('call', { h: 'Touche <b>Modifier</b> en haut pour écrire. Chaque bloc a une poignée pour le déplacer, changer son style ou le supprimer. <b>OK</b> pour finir.', c: 'blue', i: 'info' }),
+        b('h2', { h: 'Une fenêtre' }),
+        b('p', { h: 'Un titre de fenêtre ouvre un cadre : tout ce qui suit est dedans. Touche le titre pour replier la fenêtre.' }),
+        b('todo', { h: 'Une chose faite', done: true }),
         b('todo', { h: 'Un objectif avec une date', done: false, date: inDays(30), sub: 'Une précision en dessous' }),
-        b('h2', { h: `${pic('arrow-right', 'blue')} Des puces` }),
-        b('bul', { h: 'Une flèche', m: 'arrow-right', s: { c: 'blue' } }),
-        b('bul', { h: 'Une étoile <span class="pill" data-c="pink">Important</span>', m: 'star', s: { c: 'yellow' } }),
-        b('p', { h: 'Une autre police, en plus grand.', s: { f: 'hand', z: 'l' } }),
-        b('div'),
-        b('p', { h: 'Le « + » ajoute aussi des outils : semaine, séance de sport avec tes charges, suivi du jour, budget.', s: { c: 'muted' } }),
+        b('bul', { h: 'Une flèche <span class="pill" data-c="pink">Important</span>', m: 'arrow-right' }),
+        b('h2', { h: 'Un tableau' }),
+        b('table', { cols: ['Jour', 'Séance', 'Durée'], rows: [['Lundi', 'Force', '60 min'], ['Mercredi', 'Cardio', '40 min']], foot: false }),
       ],
     }],
   };

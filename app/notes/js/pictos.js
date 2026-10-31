@@ -112,9 +112,9 @@ export const COLOR_NAME = Object.fromEntries(COLORS);
 
 // Polices : celles de l'iPhone (aucun téléchargement), avec un repli ailleurs
 export const FONTS = [
-  ['sans', 'Archivo', "'Archivo', -apple-system, system-ui, sans-serif"],
-  ['wide', 'Archivo large', "'Archivo', -apple-system, system-ui, sans-serif"],
-  ['sys', 'SF Pro', "-apple-system, system-ui, 'Helvetica Neue', sans-serif"],
+  ['sans', 'Normale', "-apple-system, system-ui, sans-serif"],
+  ['wide', 'Condensée', "'Archivo', sans-serif"],
+  ['sys', 'Archivo', "'Archivo', sans-serif"],
   ['round', 'Arrondie', "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif"],
   ['serif', 'New York', "ui-serif, 'New York', Georgia, serif"],
   ['didot', 'Didot', "Didot, 'Bodoni 72', ui-serif, Georgia, serif"],
